@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import { LivePrControl } from "@/components/github/LivePrControl";
 import type {
   AdrData,
   Artifact,
@@ -573,6 +574,7 @@ function MockPr({ d }: { d: MockPrData }) {
           ))}
         </div>
       </Section>
+      <LivePrControl />
     </div>
   );
 }

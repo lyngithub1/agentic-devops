@@ -1,0 +1,24 @@
+# Code owners for Agentic DevOps.
+# Owners are automatically requested for review on matching paths. Combined with
+# the branch ruleset ("require review from Code Owners"), changes to the
+# higher-risk paths below route to a human.
+#
+# Replace @lyngithub1 if you push to a different account/org.
+
+# Default owner for everything
+*                       @lyngithub1
+
+# CI/CD, security policy and automation (highest risk)
+/.github/               @lyngithub1
+/.github/workflows/     @lyngithub1
+
+# Infrastructure as Code + deployment config
+/infra/                 @lyngithub1
+/staticwebapp.config.json @lyngithub1
+
+# Build / tooling config that affects the whole app
+/vite.config.ts         @lyngithub1
+/package.json           @lyngithub1
+/package-lock.json      @lyngithub1
+/tsconfig*.json         @lyngithub1
+/eslint.config.js       @lyngithub1

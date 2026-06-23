@@ -1,0 +1,165 @@
+# Human-in-the-loop gate for pull requests.
+#
+# Any PR that exceeds the size threshold OR contains destructive / sensitive
+# changes is routed through a manual approval (the `human-review` environment),
+# which pauses the run until a maintainer approves it in the GitHub UI. Small,
+# safe PRs skip the gate automatically (a skipped required check counts as
+# passing), so routine changes are not slowed down.
+#
+# Thresholds (edit `env` below to tune):
+#   - LARGE_LINES: total added+deleted lines that forces a manual review
+#   - LARGE_DELETIONS: total deleted lines that forces a manual review
+#   - Destructive/sensitive: any file deletion, or a change to infra/IaC,
+#     workflows, lockfiles, Dockerfiles, migrations, or the Vite config.
+
+name: PR Guard
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  LARGE_LINES: "300"
+  LARGE_DELETIONS: "150"
+
+jobs:
+  analyze-pr:
+    name: analyze-pr
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # labels + sticky comment
+      issues: write # labels are an issues API
+    outputs:
+      requires_human: ${{ steps.assess.outputs.requires_human }}
+      reasons: ${{ steps.assess.outputs.reasons }}
+    steps:
+      - name: Assess PR size and risk
+        id: assess
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const LARGE_LINES = Number(process.env.LARGE_LINES);
+            const LARGE_DELETIONS = Number(process.env.LARGE_DELETIONS);
+
+            // File paths considered sensitive / higher-risk.
+            const SENSITIVE = [
+              /^infra\//,
+              /\.bicep$/,
+              /\.tf(vars)?$/,
+              /^\.github\//,
+              /(^|\/)package-lock\.json$/,
+              /(^|\/)Dockerfile/,
+              /\/migrations\//,
+              /(^|\/)vite\.config\.ts$/,
+            ];
+
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            let additions = 0;
+            let deletions = 0;
+            const removed = [];
+            const sensitive = new Set();
+            for (const f of files) {
+              additions += f.additions || 0;
+              deletions += f.deletions || 0;
+              if (f.status === "removed") removed.push(f.filename);
+              if (SENSITIVE.some((re) => re.test(f.filename))) sensitive.add(f.filename);
+            }
+            const total = additions + deletions;
+
+            const reasons = [];
+            if (total > LARGE_LINES) reasons.push(`Large change set: ${total} changed lines (threshold ${LARGE_LINES}).`);
+            if (deletions > LARGE_DELETIONS) reasons.push(`Many deletions: ${deletions} lines removed (threshold ${LARGE_DELETIONS}).`);
+            if (removed.length) reasons.push(`File deletion(s): ${removed.slice(0, 10).join(", ")}${removed.length > 10 ? " …" : ""}.`);
+            if (sensitive.size) reasons.push(`Sensitive path(s): ${[...sensitive].slice(0, 10).join(", ")}.`);
+
+            const requiresHuman = reasons.length > 0;
+            core.setOutput("requires_human", String(requiresHuman));
+            core.setOutput("reasons", reasons.join("\n- "));
+
+            const labels = [];
+            if (requiresHuman) labels.push("needs-human-review");
+            if (total > LARGE_LINES || deletions > LARGE_DELETIONS) labels.push("large-pr");
+            if (removed.length || sensitive.size) labels.push("destructive-change");
+
+            const marker = "<!-- pr-guard -->";
+            const body = requiresHuman
+              ? `${marker}\n### 🔒 Human review required\n\nThis pull request triggered the human-in-the-loop gate:\n\n- ${reasons.join("\n- ")}\n\n**Stats:** +${additions} / -${deletions} across ${files.length} file(s).\n\nA maintainer must approve the **\`human-review\`** environment in the **PR Guard** workflow run before this PR can be merged.`
+              : `${marker}\n### ✅ Automated checks only\n\nThis PR is within safe limits (≤ ${LARGE_LINES} changed lines, no destructive or sensitive changes). No manual gate required.\n\n**Stats:** +${additions} / -${deletions} across ${files.length} file(s).`;
+
+            // Mutating calls are best-effort: PRs from forks get a read-only
+            // token, so labelling/commenting may fail there. The gate decision
+            // (the job output above) still stands.
+            try {
+              if (labels.length) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels,
+                });
+              }
+            } catch (e) {
+              core.warning(`Could not add labels: ${e.message}`);
+            }
+
+            try {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100,
+              });
+              const existing = comments.find((c) => c.body && c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body,
+                });
+              }
+            } catch (e) {
+              core.warning(`Could not upsert sticky comment: ${e.message}`);
+            }
+
+            await core.summary.addRaw(body.replace(marker, "").trim()).write();
+
+  human-approval:
+    name: human-approval
+    needs: analyze-pr
+    if: needs.analyze-pr.outputs.requires_human == 'true'
+    runs-on: ubuntu-latest
+    # Protected environment with required reviewers => this job pauses here
+    # until a maintainer approves the deployment in the GitHub UI.
+    environment: human-review
+    permissions:
+      contents: read
+    steps:
+      - name: Record human approval
+        run: |
+          echo "✅ Human approval granted for PR #${{ github.event.pull_request.number }}."
+          echo "Triggers that required review:"
+          echo "- ${{ needs.analyze-pr.outputs.reasons }}"

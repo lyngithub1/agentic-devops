@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signals — Insights to Action Platform Architecture</title>
+<style>
+:root {
+  --azure: #0078D4;
+  --azure-dk: #005A9E;
+  --azure-lt: #DEECF9;
+  --cyan: #50E6FF;
+  --green: #107C10;
+  --green-lt: #E6F4E6;
+  --orange: #FF8C00;
+  --orange-lt: #FFF4E5;
+  --purple: #5C2D91;
+  --purple-lt: #F0E6FA;
+  --gold: #FFB900;
+  --gold-lt: #FFF8E1;
+  --red: #D13438;
+  --red-lt: #FDE7E9;
+  --teal: #008272;
+  --teal-lt: #E0F7F4;
+  --gray: #505050;
+  --gray-lt: #F2F2F2;
+  --shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #F4F6F8;
+  color: #1A1A1A;
+  overflow-x: auto;
+}
+.page { padding: 28px 36px; min-width: 1580px; }
+
+/* Header */
+.header { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.header-logo { width: 44px; height: 44px; background: var(--azure); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  font-size: 22px; font-weight: 700; }
+.header h1 { font-size: 21px; font-weight: 600; color: var(--azure-dk); }
+.header .sub { font-size: 12px; color: #888; margin-top: 2px; }
+
+/* Banner */
+.banner { margin: 14px 0 12px; border-radius: 10px; padding: 16px 24px;
+  display: flex; align-items: center; gap: 16px; }
+.banner.green { background: var(--green-lt); border: 2px solid var(--green); }
+.banner.purple { background: var(--purple-lt); border: 2px solid var(--purple); }
+.banner-icon { width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 26px; flex-shrink: 0; }
+.banner-icon.green { background: var(--green); }
+.banner-icon.purple { background: var(--purple); }
+.banner-body h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.banner.green .banner-body h2 { color: var(--green); }
+.banner.purple .banner-body h2 { color: var(--purple); }
+.banner-body p { font-size: 12px; color: #555; line-height: 1.5; }
+
+/* Metrics */
+.metrics-row { display: flex; gap: 12px; margin-bottom: 20px; }
+.metric-tile { flex: 1; background: #fff; border-radius: 10px; padding: 14px 16px;
+  box-shadow: var(--shadow); text-align: center; border-top: 4px solid var(--azure); }
+.metric-tile.green { border-top-color: var(--green); }
+.metric-tile.teal { border-top-color: var(--teal); }
+.metric-tile.purple { border-top-color: var(--purple); }
+.metric-tile.orange { border-top-color: var(--orange); }
+.metric-tile.red { border-top-color: var(--red); }
+.metric-tile.gold { border-top-color: var(--gold); }
+.metric-val { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.metric-tile .metric-val { color: var(--azure-dk); }
+.metric-tile.green .metric-val { color: var(--green); }
+.metric-tile.teal .metric-val { color: var(--teal); }
+.metric-tile.purple .metric-val { color: var(--purple); }
+.metric-tile.orange .metric-val { color: var(--orange); }
+.metric-tile.red .metric-val { color: var(--red); }
+.metric-tile.gold .metric-val { color: #8A6500; }
+.metric-label { font-size: 10px; color: #888; margin-top: 3px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .4px; }
+.metric-sub { font-size: 9px; color: #AAA; margin-top: 2px; }
+
+/* Section Header */
+.section-header { display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; margin-top: 28px; }
+.section-header h2 { font-size: 16px; font-weight: 700; color: var(--azure-dk);
+  white-space: nowrap; }
+.section-header .line { flex: 1; height: 1px; background: #D2D2D2; }
+
+/* Cards */
+.card { background: #fff; border-radius: 8px; padding: 12px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 3px solid var(--azure);
+  transition: transform .12s; font-size: 11px; }
+.card:hover { transform: translateX(2px); box-shadow: 0 2px 8px rgba(0,0,0,.14); }
+.card.green { border-left-color: var(--green); }
+.card.orange { border-left-color: var(--orange); }
+.card.purple { border-left-color: var(--purple); }
+.card.gold { border-left-color: var(--gold); }
+.card.teal { border-left-color: var(--teal); }
+.card.red { border-left-color: var(--red); }
+.card-row { display: flex; align-items: center; gap: 8px; }
+.card-icon { font-size: 18px; flex-shrink: 0; }
+.card-body { flex: 1; }
+.card-name { font-weight: 700; font-size: 12px; color: #1A1A1A; }
+.card-res { font-size: 10px; color: var(--azure); font-weight: 600; }
+.card-det { font-size: 10px; color: #666; line-height: 1.4; margin-top: 2px; }
+.up-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 9px;
+  font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 4px;
+  letter-spacing: .3px; }
+.up-badge.upgraded { background: var(--green); color: #fff; }
+.up-badge.new { background: var(--teal); color: #fff; }
+.up-badge.ptu { background: var(--green); color: #fff; }
+.up-badge.gs { background: var(--azure); color: #fff; }
+.up-badge.risk { background: var(--red); color: #fff; }
+.up-badge.mock { background: var(--orange); color: #fff; }
+.up-badge.live { background: var(--green); color: #fff; }
+
+/* Tier Labels */
+.tier-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; padding: 4px 10px; border-radius: 4px; color: #fff;
+  text-align: center; margin-bottom: 8px; }
+.tier-label.compute { background: var(--green); }
+.tier-label.ai { background: var(--azure); }
+.tier-label.orch { background: var(--purple); }
+.tier-label.network { background: var(--teal); }
+.tier-label.safety { background: var(--orange); }
+.tier-label.data { background: var(--teal); }
+.tier-label.client { background: var(--gold); }
+.tier-label.fabric { background: var(--purple); }
+
+/* Horizontal Flow */
+.h-flow { display: flex; align-items: stretch; gap: 0; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.arrow-col { display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-width: 58px; gap: 3px; padding-top: 20px; }
+.arrow-line { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.arrow-line .line { width: 24px; height: 0; border-top: 2px solid var(--azure); }
+.arrow-line .head { font-size: 14px; color: var(--azure); line-height: 1; }
+.arrow-label { font-size: 8px; color: #888; text-align: center; line-height: 1.2; max-width: 70px; }
+
+/* WS Flow Chain */
+.ws-section { margin-top: 24px; background: #fff; border-radius: 10px; padding: 20px 24px;
+  box-shadow: var(--shadow); border-top: 4px solid var(--azure); }
+.ws-section.green-top { border-top-color: var(--green); }
+.ws-section.purple-top { border-top-color: var(--purple); }
+.ws-section.teal-top { border-top-color: var(--teal); }
+.ws-section h3 { font-size: 14px; font-weight: 700; color: var(--azure-dk);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.ws-section.green-top h3 { color: var(--green); }
+.ws-section.purple-top h3 { color: var(--purple); }
+.ws-section.teal-top h3 { color: var(--teal); }
+.ws-chain { display: flex; align-items: center; gap: 0; flex-wrap: nowrap;
+  overflow-x: auto; padding: 8px 0; }
+.ws-node { border-radius: 8px; padding: 12px 16px; font-size: 11px; font-weight: 600;
+  text-align: center; white-space: nowrap; flex-shrink: 0; min-width: 140px;
+  box-shadow: var(--shadow); }
+.ws-node.client { background: var(--gold-lt); border: 2px solid var(--gold); color: #8A6500; }
+.ws-node.front { background: var(--teal-lt); border: 2px solid var(--teal); color: var(--teal); }
+.ws-node.agent { background: var(--green-lt); border: 2px solid var(--green); color: var(--green); }
+.ws-node.orch { background: var(--purple-lt); border: 2px solid var(--purple); color: var(--purple); }
+.ws-node.filter { background: var(--orange-lt); border: 2px solid var(--orange); color: #B86200; }
+.ws-node.openai { background: var(--green-lt); border: 3px solid var(--green); color: var(--green); }
+.ws-node.result { background: var(--green-lt); border: 2px solid var(--green); color: var(--green); }
+.ws-node.azure { background: var(--azure-lt); border: 2px solid var(--azure); color: var(--azure-dk); }
+.ws-node.teal-n { background: var(--teal-lt); border: 2px solid var(--teal); color: var(--teal); }
+.ws-node.red-n { background: var(--red-lt); border: 2px solid var(--red); color: var(--red); }
+.ws-node.purple-n { background: var(--purple-lt); border: 2px solid var(--purple); color: var(--purple); }
+.ws-node-name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+.ws-node-det { font-size: 10px; font-weight: 400; color: #666; }
+.ws-node-count { font-size: 18px; font-weight: 700; margin-top: 4px; }
+.ws-arrow { display: flex; flex-direction: column; align-items: center; padding: 0 4px; flex-shrink: 0; }
+.ws-arrow-line { width: 30px; height: 0; border-top: 2px solid var(--azure); }
+.ws-arrow-head { font-size: 14px; color: var(--azure); line-height: 1; }
+.ws-arrow-label { font-size: 9px; color: #888; white-space: nowrap; margin-top: 2px; }
+.ws-arrow.green-a .ws-arrow-line { border-top-color: var(--green); }
+.ws-arrow.green-a .ws-arrow-head { color: var(--green); }
+.ws-arrow.purple-a .ws-arrow-line { border-top-color: var(--purple); }
+.ws-arrow.purple-a .ws-arrow-head { color: var(--purple); }
+.ws-arrow.teal-a .ws-arrow-line { border-top-color: var(--teal); }
+.ws-arrow.teal-a .ws-arrow-head { color: var(--teal); }
+
+/* Changes Panel */
+.changes-section { display: flex; gap: 20px; margin-bottom: 24px; }
+.changes-panel { flex: 1; background: #fff; border-radius: 10px; padding: 20px 24px;
+  box-shadow: var(--shadow); }
+.changes-panel.v4 { border-top: 4px solid var(--green); }
+.changes-panel.v4 h3 { color: var(--green); }
+.changes-panel.cost { border-top: 4px solid var(--azure); }
+.changes-panel.cost h3 { color: var(--azure); }
+.changes-panel h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.change-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid #F0F0F0; font-size: 12px; line-height: 1.5; color: #333; }
+.change-item:last-child { border-bottom: none; }
+.change-num { width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.change-num.green { background: var(--green); }
+.change-num.azure { background: var(--azure); }
+.change-num.purple { background: var(--purple); }
+.change-num.teal { background: var(--teal); }
+.change-num.orange { background: var(--orange); }
+
+/* Region Box */
+.region-box { border: 2px solid var(--azure); border-radius: 14px; padding: 22px 16px 16px;
+  background: rgba(0,120,212,.03); position: relative; }
+.region-tag { position: absolute; top: -12px; left: 18px; background: var(--azure); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 3px 14px; border-radius: 4px; letter-spacing: .8px; }
+
+/* Two-col grid */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+
+/* Footer */
+.footer { margin-top: 28px; text-align: center; font-size: 10px; color: #AAA;
+  padding-bottom: 16px; line-height: 1.6; }
+.footer .disclaimer { font-style: italic; max-width: 900px; margin: 0 auto; }
+
+/* Feedback loop arrow */
+.feedback-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 18px 0 8px; }
+.feedback-arrow { font-size: 18px; color: var(--purple); }
+.feedback-label { font-size: 11px; font-weight: 600; color: var(--purple); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== HEADER ===== -->
+  <div class="header">
+    <div class="header-logo">S</div>
+    <div>
+      <h1>Signals — Insights to Action Platform Architecture</h1>
+      <div class="sub">Healthcare Procurement • Azure AI Foundry • Evidence-Grounded Decision Loop</div>
+    </div>
+  </div>
+
+  <!-- ===== BANNER ===== -->
+  <div class="banner green">
+    <div class="banner-icon green">✓</div>
+    <div class="banner-body">
+      <h2>Governed AI — From Evidence to Execution</h2>
+      <p>Not dashboards. A structured path from <strong>Signals → Opportunities → Decisions → Initiatives → Outcomes</strong> with full citation traceability, auditable AI outputs, and human-in-the-loop approvals at every stage.</p>
+    </div>
+  </div>
+
+  <!-- ===== METRICS ===== -->
+  <div class="metrics-row">
+    <div class="metric-tile">
+      <div class="metric-val">5</div>
+      <div class="metric-label">Core Objects</div>
+      <div class="metric-sub">Signal → Outcome</div>
+    </div>
+    <div class="metric-tile green">
+      <div class="metric-val">2</div>
+      <div class="metric-label">AI Query Layers</div>
+      <div class="metric-sub">RAG + NL2SQL</div>
+    </div>
+    <div class="metric-tile teal">
+      <div class="metric-val">231</div>
+      <div class="metric-label">Search Documents</div>
+      <div class="metric-sub">Vector + Keyword hybrid</div>
+    </div>
+    <div class="metric-tile purple">
+      <div class="metric-val">18</div>
+      <div class="metric-label">Auto-Detected Signals</div>
+      <div class="metric-sub">Price index, fragmentation, posture</div>
+    </div>
+    <div class="metric-tile orange">
+      <div class="metric-val">2,200</div>
+      <div class="metric-label">Invoice Lines</div>
+      <div class="metric-sub">9 suppliers • 3 facilities</div>
+    </div>
+    <div class="metric-tile gold">
+      <div class="metric-val">GPT-4o</div>
+      <div class="metric-label">Foundation Model</div>
+      <div class="metric-sub">Azure AI Foundry endpoint</div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: CORE DECISION LOOP ===== -->
+  <div class="section-header">
+    <h2>🔄 Core Decision Loop — Signal to Outcome</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="ws-section">
+    <h3>📊 Insights-to-Action Pipeline</h3>
+    <div class="ws-chain">
+
+      <div class="ws-node client">
+        <div class="ws-node-name">📥 Data Ingestion</div>
+        <div class="ws-node-det">CSV / Lakehouse<br>Invoice, Supplier, Item<br>Facility, Contract, Benchmark</div>
+      </div>
+
+      <div class="ws-arrow green-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">load &amp; parse</div>
+      </div>
+
+      <div class="ws-node red-n">
+        <div class="ws-node-name">🔍 Signal Detection</div>
+        <div class="ws-node-det">Rules + AI analysis<br>Price index anomaly<br>Fragmentation • Posture</div>
+        <div class="ws-node-count" style="color:var(--red);">18</div>
+      </div>
+
+      <div class="ws-arrow">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">evidence pack</div>
+      </div>
+
+      <div class="ws-node azure">
+        <div class="ws-node-name">💡 Opportunity Scoring</div>
+        <div class="ws-node-det">AI narrative generation<br>Citations + evidence refs<br>Estimated savings</div>
+      </div>
+
+      <div class="ws-arrow purple-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">route + policy</div>
+      </div>
+
+      <div class="ws-node orch">
+        <div class="ws-node-name">⚖️ Decision Routing</div>
+        <div class="ws-node-det">Rules-based triage<br>AI recommendation<br>Human approval required</div>
+      </div>
+
+      <div class="ws-arrow green-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">approved</div>
+      </div>
+
+      <div class="ws-node agent">
+        <div class="ws-node-name">📋 Initiative Planner</div>
+        <div class="ws-node-det">AI-assisted action plan<br>KPIs + milestones<br>Responsibility matrix</div>
+      </div>
+
+      <div class="ws-arrow teal-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">monitor</div>
+      </div>
+
+      <div class="ws-node teal-n">
+        <div class="ws-node-name">📈 Outcome Monitor</div>
+        <div class="ws-node-det">Compliance drift detection<br>Savings realization<br>New signal generation</div>
+      </div>
+
+    </div>
+
+    <div class="feedback-row">
+      <span class="feedback-arrow">↩</span>
+      <span class="feedback-label">Outcomes feed back as new Signals — continuous improvement loop</span>
+      <span class="feedback-arrow">↩</span>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: PLATFORM ARCHITECTURE ===== -->
+  <div class="section-header">
+    <h2>🏗️ Platform Architecture — Service Topology</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="h-flow">
+
+    <!-- CLIENT TIER -->
+    <div class="col" style="min-width:160px;">
+      <div class="tier-label client">CLIENT</div>
+      <div class="card gold">
+        <div class="card-row">
+          <div class="card-icon">🖥️</div>
+          <div class="card-body">
+            <div class="card-name">React + Vite UI</div>
+            <div class="card-res">Port 5173</div>
+            <div class="card-det">React 19 • TypeScript<br>react-router-dom v6<br>lucide-react icons</div>
+          </div>
+        </div>
+      </div>
+      <div class="card gold">
+        <div class="card-row">
+          <div class="card-icon">📱</div>
+          <div class="card-body">
+            <div class="card-name">7 Page Views</div>
+            <div class="card-res">SPA Navigation</div>
+            <div class="card-det">Dashboard • Signals<br>Opportunities • Decisions<br>Initiatives • Outcomes<br>Ask Your Data • Fabric Agent</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">REST API<br>JSON</div>
+    </div>
+
+    <!-- API TIER -->
+    <div class="col" style="min-width:180px;">
+      <div class="tier-label compute">API LAYER</div>
+      <div class="card green">
+        <div class="card-row">
+          <div class="card-icon">⚡</div>
+          <div class="card-body">
+            <div class="card-name">Express API</div>
+            <div class="card-res">Port 3001 • TypeScript</div>
+            <div class="card-det">CRUD endpoints<br>Signal detection worker<br>Opportunity scoring<br>Decision routing<br>Initiative planning<br>Outcome monitoring</div>
+            <div class="up-badge gs">CONTAINER APPS</div>
+          </div>
+        </div>
+      </div>
+      <div class="card green">
+        <div class="card-row">
+          <div class="card-icon">🛡️</div>
+          <div class="card-body">
+            <div class="card-name">Zod Validation</div>
+            <div class="card-res">Request / Response</div>
+            <div class="card-det">Schema enforcement<br>Type-safe contracts<br>correlationId on all responses</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">query /<br>index</div>
+    </div>
+
+    <!-- AI SERVICES TIER -->
+    <div class="col" style="min-width:200px;">
+      <div class="tier-label ai">AI SERVICES</div>
+      <div class="card">
+        <div class="card-row">
+          <div class="card-icon">🧠</div>
+          <div class="card-body">
+            <div class="card-name">Azure OpenAI</div>
+            <div class="card-res">Sweden Central</div>
+            <div class="card-det">GPT-4o (2024-11-20)<br>text-embedding-ada-002<br>DefaultAzureCredential</div>
+            <div class="up-badge gs">GLOBALSTANDARD</div>
+          </div>
+        </div>
+      </div>
+      <div class="card teal">
+        <div class="card-row">
+          <div class="card-icon">🔍</div>
+          <div class="card-body">
+            <div class="card-name">Azure AI Search</div>
+            <div class="card-res">Free Tier</div>
+            <div class="card-det">231 documents indexed<br>1536-dim vectors (HNSW)<br>Hybrid: vector + keyword<br>Index: <code style="font-family:'Cascadia Code',Consolas,monospace;font-size:9px;background:#EEE;padding:1px 3px;border-radius:2px;">signals-data</code></div>
+            <div class="up-badge new">HYBRID SEARCH</div>
+          </div>
+        </div>
+      </div>
+      <div class="card purple">
+        <div class="card-row">
+          <div class="card-icon">🤖</div>
+          <div class="card-body">
+            <div class="card-name">Fabric Data Agent</div>
+            <div class="card-res">NL2SQL Engine</div>
+            <div class="card-det">Natural language → SQL<br>OpenAI Assistants protocol<br>7 mock query patterns<br>Live-ready with F2+ capacity</div>
+            <div class="up-badge mock">MOCK MODE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">store /<br>retrieve</div>
+    </div>
+
+    <!-- DATA TIER -->
+    <div class="col" style="min-width:170px;">
+      <div class="tier-label data">DATA LAYER</div>
+      <div class="card teal">
+        <div class="card-row">
+          <div class="card-icon">📦</div>
+          <div class="card-body">
+            <div class="card-name">In-Memory Store</div>
+            <div class="card-res">Mock Cosmos DB</div>
+            <div class="card-det">Typed collections<br>Signal, Opportunity<br>Decision, Initiative<br>OutcomeEvent</div>
+            <div class="up-badge gs">COSMOS DB TARGET</div>
+          </div>
+        </div>
+      </div>
+      <div class="card teal">
+        <div class="card-row">
+          <div class="card-icon">📊</div>
+          <div class="card-body">
+            <div class="card-name">Sample Data</div>
+            <div class="card-res">8 CSV Files</div>
+            <div class="card-det">2,200 invoice lines<br>28 items • 9 suppliers<br>3 facilities • 9 contracts<br>6 benchmarks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">Lakehouse<br>target</div>
+    </div>
+
+    <!-- FABRIC TIER -->
+    <div class="col" style="min-width:170px;">
+      <div class="tier-label fabric">MICROSOFT FABRIC</div>
+      <div class="card purple">
+        <div class="card-row">
+          <div class="card-icon">🌐</div>
+          <div class="card-body">
+            <div class="card-name">Fabric Lakehouse</div>
+            <div class="card-res">F2+ Capacity (Target)</div>
+            <div class="card-det">Delta tables<br>OneLake storage<br>Unified analytics</div>
+            <div class="up-badge mock">FUTURE</div>
+          </div>
+        </div>
+      </div>
+      <div class="card purple">
+        <div class="card-row">
+          <div class="card-icon">🔮</div>
+          <div class="card-body">
+            <div class="card-name">Fabric IQ</div>
+            <div class="card-res">Data Agent Runtime</div>
+            <div class="card-det">NL2SQL • NL2DAX<br>Ontology graph<br>Semantic model</div>
+            <div class="up-badge mock">FUTURE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">traces /<br>logs</div>
+    </div>
+
+    <!-- OBSERVABILITY -->
+    <div class="col" style="min-width:150px;">
+      <div class="tier-label safety">OBSERVABILITY</div>
+      <div class="card orange">
+        <div class="card-row">
+          <div class="card-icon">📡</div>
+          <div class="card-body">
+            <div class="card-name">App Insights</div>
+            <div class="card-res">Monitoring</div>
+            <div class="card-det">Correlation IDs<br>Structured logging<br>Request tracing</div>
+          </div>
+        </div>
+      </div>
+      <div class="card orange">
+        <div class="card-row">
+          <div class="card-icon">🔑</div>
+          <div class="card-body">
+            <div class="card-name">Key Vault</div>
+            <div class="card-res">Secrets Management</div>
+            <div class="card-det">API keys<br>Connection strings<br>Managed Identity</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== SECTION: AI QUERY ARCHITECTURE ===== -->
+  <div class="section-header">
+    <h2>🧠 Dual AI Query Architecture</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- ASK YOUR DATA (RAG) -->
+    <div class="ws-section teal-top">
+      <h3>🔍 Ask Your Data — RAG Pipeline (Azure AI Search)</h3>
+      <div class="ws-chain">
+        <div class="ws-node client">
+          <div class="ws-node-name">User Question</div>
+          <div class="ws-node-det">"What does the Aegis<br>contract say about<br>pricing tiers?"</div>
+        </div>
+        <div class="ws-arrow teal-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">embed</div>
+        </div>
+        <div class="ws-node teal-n">
+          <div class="ws-node-name">Vector Search</div>
+          <div class="ws-node-det">Azure AI Search<br>Hybrid vector + keyword<br>Top-K evidence</div>
+        </div>
+        <div class="ws-arrow">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">augment</div>
+        </div>
+        <div class="ws-node azure">
+          <div class="ws-node-name">GPT-4o</div>
+          <div class="ws-node-det">System prompt<br>with evidence context<br>Citation-required</div>
+        </div>
+        <div class="ws-arrow green-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">grounded</div>
+        </div>
+        <div class="ws-node result">
+          <div class="ws-node-name">Answer + Citations</div>
+          <div class="ws-node-det">Narrative with<br>source references<br>Evidence bullets</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; font-size:10px; color:#666; line-height:1.5;">
+        <strong>Best for:</strong> Unstructured data — contract clauses, supplier docs, RFP content, policy lookups
+      </div>
+    </div>
+
+    <!-- FABRIC DATA AGENT -->
+    <div class="ws-section purple-top">
+      <h3>🤖 Fabric Data Agent — NL2SQL Pipeline</h3>
+      <div class="ws-chain">
+        <div class="ws-node client">
+          <div class="ws-node-name">User Question</div>
+          <div class="ws-node-det">"Show total spend<br>by supplier for<br>off-contract items"</div>
+        </div>
+        <div class="ws-arrow purple-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">NL2SQL</div>
+        </div>
+        <div class="ws-node purple-n">
+          <div class="ws-node-name">Data Agent</div>
+          <div class="ws-node-det">Schema-aware<br>SQL generation<br>Execution plan</div>
+        </div>
+        <div class="ws-arrow">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">execute</div>
+        </div>
+        <div class="ws-node azure">
+          <div class="ws-node-name">Lakehouse</div>
+          <div class="ws-node-det">Delta tables<br>Structured data<br>Live query</div>
+        </div>
+        <div class="ws-arrow green-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">results</div>
+        </div>
+        <div class="ws-node result">
+          <div class="ws-node-name">Table + SQL + Steps</div>
+          <div class="ws-node-det">Tabular results<br>Generated SQL shown<br>Execution timeline</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; font-size:10px; color:#666; line-height:1.5;">
+        <strong>Best for:</strong> Structured data — spend analysis, supplier rankings, benchmark comparisons, facility breakdowns
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== SECTION: DATA MODEL ===== -->
+  <div class="section-header">
+    <h2>📐 Core Data Model — Structured Objects</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="ws-section green-top">
+    <h3>📋 Domain Object Chain</h3>
+    <div class="ws-chain">
+      <div class="ws-node red-n">
+        <div class="ws-node-name">Signal</div>
+        <div class="ws-node-det">id • type • severity<br>evidenceRefs[]<br>createdAt • createdBy</div>
+      </div>
+      <div class="ws-arrow">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">generates</div>
+      </div>
+      <div class="ws-node azure">
+        <div class="ws-node-name">Opportunity</div>
+        <div class="ws-node-det">id • signalId • score<br>narrative • citations[]<br>estimatedSavings</div>
+      </div>
+      <div class="ws-arrow">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">routes to</div>
+      </div>
+      <div class="ws-node orch">
+        <div class="ws-node-name">Decision</div>
+        <div class="ws-node-det">id • opportunityId<br>recommendation<br>status: pending → approved</div>
+      </div>
+      <div class="ws-arrow">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">creates</div>
+      </div>
+      <div class="ws-node agent">
+        <div class="ws-node-name">Initiative</div>
+        <div class="ws-node-det">id • decisionId<br>actionPlan • KPIs[]<br>milestones • owner</div>
+      </div>
+      <div class="ws-arrow">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">tracks</div>
+      </div>
+      <div class="ws-node teal-n">
+        <div class="ws-node-name">OutcomeEvent</div>
+        <div class="ws-node-det">id • initiativeId<br>metricType • value<br>drift → new Signal</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: KEY CAPABILITIES ===== -->
+  <div class="section-header">
+    <h2>✓ Key Architecture Capabilities</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="changes-section">
+    <div class="changes-panel v4">
+      <h3>✓ AI Governance Principles</h3>
+      <div class="change-item">
+        <div class="change-num green">1</div>
+        <div><strong>Citations Required:</strong> Every AI-generated narrative must include source references. Output rejected if citations missing.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">2</div>
+        <div><strong>Human-in-the-Loop:</strong> AI proposes, humans decide. No auto-finalized approvals. Decision objects require explicit approval action.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">3</div>
+        <div><strong>Evidence Packs:</strong> Every opportunity includes evidence bullets, source quotes, and traceable <code style="font-family:'Cascadia Code',Consolas,monospace;font-size:9px;background:#EEE;padding:1px 3px;border-radius:2px;">evidenceRefs[]</code> arrays.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">4</div>
+        <div><strong>Correlation IDs:</strong> All API responses include <code style="font-family:'Cascadia Code',Consolas,monospace;font-size:9px;background:#EEE;padding:1px 3px;border-radius:2px;">correlationId</code> for end-to-end request tracing.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">5</div>
+        <div><strong>NL2SQL Auditability:</strong> Fabric Data Agent shows generated SQL and execution steps alongside every answer.</div>
+      </div>
+    </div>
+    <div class="changes-panel cost">
+      <h3>🔧 Technology Choices</h3>
+      <div class="change-item">
+        <div class="change-num azure">A</div>
+        <div><strong>Azure OpenAI GPT-4o:</strong> Foundation model for narrative generation, opportunity scoring, decision recommendations, and initiative planning.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num teal">B</div>
+        <div><strong>Azure AI Search:</strong> Hybrid vector + keyword search (1536-dim embeddings via ada-002). RAG pipeline for unstructured data queries.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num purple">C</div>
+        <div><strong>Microsoft Fabric:</strong> Data Agent with NL2SQL for structured analytics. OpenAI Assistants protocol for programmatic access. Mock-first, live-ready.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num orange">D</div>
+        <div><strong>Zod Schemas:</strong> Runtime validation for all domain objects. TypeScript strict mode. Type-safe API contracts.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">E</div>
+        <div><strong>Managed Identity:</strong> DefaultAzureCredential for OpenAI. Key Vault for secrets. No credentials in code.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: DEPLOYMENT TARGET ===== -->
+  <div class="section-header">
+    <h2>☁️ Azure Deployment Target</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="region-box">
+    <div class="region-tag">REGION: SWEDEN CENTRAL</div>
+    <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px;">
+      <div class="card" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">🧠</div>
+          <div class="card-body">
+            <div class="card-name">signals-openai-demo</div>
+            <div class="card-res">Azure OpenAI</div>
+            <div class="card-det">gpt-4o (GlobalStandard)<br>text-embedding-ada-002</div>
+          </div>
+        </div>
+      </div>
+      <div class="card teal" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">🔍</div>
+          <div class="card-body">
+            <div class="card-name">signals-search-demo</div>
+            <div class="card-res">Azure AI Search (Free)</div>
+            <div class="card-det">Index: signals-data<br>231 documents</div>
+          </div>
+        </div>
+      </div>
+      <div class="card green" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">⚡</div>
+          <div class="card-body">
+            <div class="card-name">Container Apps</div>
+            <div class="card-res">API + Workers (Target)</div>
+            <div class="card-det">Express API<br>Signal detection job<br>Outcome monitor job</div>
+          </div>
+        </div>
+      </div>
+      <div class="card teal" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">📦</div>
+          <div class="card-body">
+            <div class="card-name">Cosmos DB</div>
+            <div class="card-res">NoSQL (Target)</div>
+            <div class="card-det">Domain objects<br>Audit trail<br>In-memory mock today</div>
+          </div>
+        </div>
+      </div>
+      <div class="card orange" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">📡</div>
+          <div class="card-body">
+            <div class="card-name">App Insights</div>
+            <div class="card-res">Observability (Target)</div>
+            <div class="card-det">Traces • Logs<br>Correlation IDs<br>Performance metrics</div>
+          </div>
+        </div>
+      </div>
+      <div class="card purple" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">🔮</div>
+          <div class="card-body">
+            <div class="card-name">Microsoft Fabric</div>
+            <div class="card-res">F2+ Capacity (Target)</div>
+            <div class="card-det">Lakehouse • Data Agent<br>NL2SQL runtime<br>Mock-first today</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="footer">
+    <p class="disclaimer">Demo-grade architecture — in-memory storage and mock services used where full integration is heavy. Production deployment targets Cosmos DB, Container Apps, Key Vault, and Fabric F2+ capacity.</p>
+    <br>
+    Signals — Insights to Action Platform • Healthcare Procurement • Azure AI Foundry + Microsoft Fabric
+  </div>
+
+</div>
+</body>
+</html>

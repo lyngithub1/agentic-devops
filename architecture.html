@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agentic DevOps — Architecture</title>
+    <script>
+      (() => {
+        const param = new URLSearchParams(window.location.search).get("clawpilotTheme");
+        const theme =
+          param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --cp-bg: #f7f4ef;
+        --cp-bg-elevated: #fcfbf8;
+        --cp-surface: #ffffff;
+        --cp-surface-soft: #f5f5f5;
+        --cp-border: #dedede;
+        --cp-border-strong: #919191;
+        --cp-text: #242424;
+        --cp-text-muted: #5c5c5c;
+        --cp-text-soft: #6f6f6f;
+        --cp-accent: #b11f4b;
+        --cp-accent-hover: #9a1a41;
+        --cp-accent-soft: rgba(177, 31, 75, 0.08);
+        --cp-accent-fg: #ffffff;
+        --cp-success: #16a34a;
+        --cp-danger: #dc2626;
+        --cp-warning: #f59e0b;
+        --cp-link: #0078d4;
+        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+        --cp-overlay: rgba(255, 255, 255, 0.8);
+        --cp-panel: rgba(255, 255, 255, 0.86);
+        --cp-panel-strong: rgba(255, 255, 255, 0.96);
+        --cp-sheen: rgba(255, 255, 255, 0.55);
+        --cp-highlight: rgba(177, 31, 75, 0.12);
+      }
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --cp-bg: #3d3b3a;
+        --cp-bg-elevated: #343231;
+        --cp-surface: #292929;
+        --cp-surface-soft: #2e2e2e;
+        --cp-border: #474747;
+        --cp-border-strong: #5f5f5f;
+        --cp-text: #dedede;
+        --cp-text-muted: #919191;
+        --cp-text-soft: #b0b0b0;
+        --cp-accent: #fd8ea1;
+        --cp-accent-hover: #fb7b91;
+        --cp-accent-soft: rgba(253, 142, 161, 0.14);
+        --cp-accent-fg: #1a1a1a;
+        --cp-success: #4ade80;
+        --cp-danger: #f87171;
+        --cp-warning: #fbbf24;
+        --cp-link: #4da6ff;
+        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+        --cp-overlay: rgba(41, 41, 41, 0.88);
+        --cp-panel: rgba(41, 41, 41, 0.72);
+        --cp-panel-strong: rgba(41, 41, 41, 0.96);
+        --cp-sheen: rgba(255, 255, 255, 0.04);
+        --cp-highlight: rgba(253, 142, 161, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--cp-bg);
+        color: var(--cp-text);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      code, .mono {
+        font-family: Consolas, "Courier New", Courier, monospace;
+      }
+
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 24px 64px;
+      }
+
+      /* ---- Header ---- */
+      header.top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .title-block h1 {
+        margin: 0;
+        font-size: 1.7rem;
+        letter-spacing: -0.01em;
+      }
+      .title-block p {
+        margin: 6px 0 0;
+        color: var(--cp-text-muted);
+        font-size: 0.95rem;
+        max-width: 640px;
+      }
+      .pill-accent {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--cp-accent);
+        background: var(--cp-accent-soft);
+        border: 1px solid var(--cp-accent-soft);
+        padding: 2px 8px;
+        border-radius: 999px;
+        margin-bottom: 8px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .seg {
+        display: inline-flex;
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        border-radius: 0.625rem;
+        padding: 3px;
+        gap: 2px;
+      }
+      .seg button {
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border: 0;
+        background: transparent;
+        color: var(--cp-text-muted);
+        padding: 5px 12px;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+      .seg button:hover { color: var(--cp-text); }
+      .seg button.active {
+        background: var(--cp-accent);
+        color: var(--cp-accent-fg);
+      }
+      .icon-btn {
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        color: var(--cp-text);
+        padding: 7px 12px;
+        border-radius: 0.625rem;
+        cursor: pointer;
+      }
+      .icon-btn:hover { border-color: var(--cp-border-strong); }
+
+      .legend {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 18px 0 22px;
+        font-size: 0.8rem;
+        color: var(--cp-text-muted);
+      }
+      .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+      .swatch {
+        width: 12px; height: 12px; border-radius: 4px;
+        border: 1px solid var(--cp-border-strong);
+        display: inline-block;
+      }
+      .swatch.both { background: var(--cp-surface); }
+      .swatch.sim { background: var(--cp-accent-soft); border-color: var(--cp-accent); }
+      .swatch.live { background: var(--cp-highlight); border-color: var(--cp-accent); }
+
+      /* ---- Layer band ---- */
+      .band {
+        position: relative;
+        border: 1px solid var(--cp-border);
+        background: var(--cp-bg-elevated);
+        border-radius: 16px;
+        padding: 14px 16px 16px;
+        margin-bottom: 10px;
+        box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+      }
+      .band-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .band-num {
+        flex: 0 0 auto;
+        width: 24px; height: 24px;
+        border-radius: 7px;
+        background: var(--cp-accent);
+        color: var(--cp-accent-fg);
+        font-size: 0.78rem;
+        font-weight: 700;
+        display: grid; place-items: center;
+      }
+      .band-label h2 {
+        margin: 0;
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+      }
+      .band-label .sub {
+        color: var(--cp-text-soft);
+        font-size: 0.8rem;
+        font-weight: 400;
+        margin-left: 2px;
+      }
+
+      .nodes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+      }
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 780px) { .two-col { grid-template-columns: 1fr; } }
+      .col {
+        border: 1px dashed var(--cp-border-strong);
+        border-radius: 12px;
+        padding: 10px;
+      }
+      .col-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--cp-text-muted);
+        margin: 0 0 9px 2px;
+      }
+
+      .node {
+        text-align: left;
+        width: 100%;
+        font: inherit;
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        border-radius: 0.625rem;
+        padding: 10px 11px;
+        cursor: pointer;
+        transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.18s;
+        display: block;
+      }
+      .node + .node { margin-top: 8px; }
+      .node:hover {
+        transform: translateY(-1px);
+        border-color: var(--cp-accent);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+      }
+      .node .n-top {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      }
+      .node .n-title { font-weight: 600; font-size: 0.9rem; }
+      .node .n-kind {
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cp-text-soft);
+        background: var(--cp-surface-soft);
+        border: 1px solid var(--cp-border);
+        padding: 1px 6px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .node .n-desc {
+        margin: 5px 0 0;
+        font-size: 0.78rem;
+        color: var(--cp-text-muted);
+      }
+      .node.dim { opacity: 0.28; }
+      .node.flag-sim { border-left: 3px solid var(--cp-accent); }
+      .node.flag-live { border-left: 3px solid var(--cp-accent); }
+
+      /* connector arrow between bands */
+      .conn {
+        text-align: center;
+        color: var(--cp-border-strong);
+        font-size: 1.1rem;
+        line-height: 1;
+        margin: -2px 0 8px;
+        user-select: none;
+      }
+
+      /* ---- Flow + drawer split ---- */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 16px;
+        margin-top: 26px;
+      }
+      @media (max-width: 920px) { .grid-2 { grid-template-columns: 1fr; } }
+
+      .card {
+        border: 1px solid var(--cp-border);
+        background: var(--cp-bg-elevated);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+      }
+      .card h3 { margin: 0 0 4px; font-size: 1rem; }
+      .card .muted { color: var(--cp-text-muted); font-size: 0.82rem; margin: 0 0 12px; }
+
+      ol.flow { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+      ol.flow li {
+        position: relative;
+        padding: 8px 0 8px 38px;
+        border-top: 1px solid var(--cp-border);
+        font-size: 0.86rem;
+      }
+      ol.flow li:first-child { border-top: 0; }
+      ol.flow li::before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        left: 0; top: 8px;
+        width: 24px; height: 24px;
+        border-radius: 999px;
+        background: var(--cp-accent-soft);
+        color: var(--cp-accent);
+        border: 1px solid var(--cp-accent);
+        font-size: 0.74rem;
+        font-weight: 700;
+        display: grid; place-items: center;
+      }
+      ol.flow li code {
+        font-size: 0.8em;
+        background: var(--cp-surface-soft);
+        border: 1px solid var(--cp-border);
+        padding: 0 4px;
+        border-radius: 4px;
+        color: var(--cp-text);
+      }
+      .flow-hidden { display: none; }
+
+      .iq-row { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+      .iq {
+        display: flex; align-items: baseline; gap: 8px;
+        font-size: 0.82rem;
+      }
+      .iq b { font-weight: 700; }
+      .iq .tag {
+        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+        border: 1px solid var(--cp-border-strong);
+        border-radius: 999px; padding: 1px 8px;
+        color: var(--cp-text); white-space: nowrap;
+      }
+
+      .stack {
+        display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+      }
+      .chip {
+        font-size: 0.74rem;
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        border-radius: 999px;
+        padding: 3px 10px;
+        color: var(--cp-text-muted);
+      }
+
+      /* ---- Detail drawer ---- */
+      .drawer-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.32);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.18s;
+        z-index: 40;
+      }
+      .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+      .drawer {
+        position: fixed; top: 0; right: 0; bottom: 0;
+        width: min(420px, 92vw);
+        background: var(--cp-bg-elevated);
+        border-left: 1px solid var(--cp-border);
+        box-shadow: var(--cp-shadow);
+        transform: translateX(100%);
+        transition: transform 0.22s ease;
+        z-index: 50;
+        padding: 22px 22px 30px;
+        overflow-y: auto;
+      }
+      .drawer.open { transform: translateX(0); }
+      .drawer .d-kind {
+        font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.06em; color: var(--cp-accent);
+      }
+      .drawer h3 { margin: 6px 0 2px; font-size: 1.25rem; }
+      .drawer .d-meta { color: var(--cp-text-soft); font-size: 0.8rem; margin-bottom: 14px; }
+      .drawer p.d-body { font-size: 0.9rem; color: var(--cp-text); }
+      .drawer .d-list { margin: 10px 0 0; padding-left: 18px; font-size: 0.86rem; color: var(--cp-text-muted); }
+      .drawer .d-list li { margin: 4px 0; }
+      .drawer .close {
+        position: absolute; top: 14px; right: 14px;
+        border: 1px solid var(--cp-border);
+        background: var(--cp-surface);
+        color: var(--cp-text);
+        width: 30px; height: 30px; border-radius: 8px;
+        cursor: pointer; font-size: 1rem; line-height: 1;
+      }
+      .drawer .close:hover { border-color: var(--cp-border-strong); }
+
+      footer.foot {
+        margin-top: 30px; text-align: center;
+        color: var(--cp-text-soft); font-size: 0.78rem;
+      }
+      footer.foot code { color: var(--cp-text-muted); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div class="title-block">
+          <span class="pill-accent">Architecture</span>
+          <h1>Agentic DevOps — Product Idea Pipeline</h1>
+          <p>
+            A Vite + React + TypeScript demo that visualizes a Magentic, multi-agent
+            "idea-to-market" pipeline. It runs in two modes: a deterministic
+            <strong>Simulation</strong> from curated content, and a
+            <strong>Live</strong> mode where Azure OpenAI authors each phase in real time.
+          </p>
+        </div>
+        <div class="toolbar">
+          <div class="seg" id="modeSeg" role="tablist" aria-label="Highlight data path">
+            <button data-mode="both" class="active">Both</button>
+            <button data-mode="sim">Simulation</button>
+            <button data-mode="live">Live</button>
+          </div>
+          <button class="icon-btn" id="themeBtn" title="Toggle light / dark">◐ Theme</button>
+        </div>
+      </header>
+
+      <div class="legend">
+        <span class="item"><span class="swatch both"></span> Shared (both modes)</span>
+        <span class="item"><span class="swatch sim"></span> Simulation path</span>
+        <span class="item"><span class="swatch live"></span> Live (LLM) path</span>
+        <span class="item" style="margin-left:auto">Click any block for details →</span>
+      </div>
+
+      <!-- Diagram bands are injected here -->
+      <main id="diagram"></main>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Data flow</h3>
+          <p class="muted">How a run travels through the system. Use the toggle above to switch paths.</p>
+
+          <ol class="flow" id="flowSim">
+            <li>User picks a business and presses <strong>Run</strong> in <strong>Simulation</strong> mode.</li>
+            <li><code>store.start()</code> assembles a <code>RunScript</code> via <code>buildSegments()</code> from curated content.</li>
+            <li><code>SimulatedRunner</code> plays steps at the chosen speed, emitting phase / sub-agent / artifact / activity events.</li>
+            <li>Events update the <strong>Zustand</strong> store.</li>
+            <li>React re-renders the lanes, artifacts, orchestrator narration and gates.</li>
+            <li>Human-approval <strong>gates</strong> pause playback until the reviewer approves.</li>
+          </ol>
+
+          <ol class="flow flow-hidden" id="flowLive">
+            <li>On load, <code>checkLiveHealth()</code> GETs <code>/api/llm/health</code> → the model registry (fast / deep).</li>
+            <li>User selects a model (<strong>GPT-4.1</strong> or <strong>GPT-5.4</strong>) and presses <strong>Run</strong> in Live mode.</li>
+            <li><code>_startLive</code> builds a baseline, then for each phase calls <code>applyLiveStage()</code>.</li>
+            <li><code>llmComplete()</code> POSTs the system + stage prompt (and model id) to <code>/api/llm</code>.</li>
+            <li>The dev <strong>proxy</strong> resolves that model's env, fetches an Entra token (cached per subscription) and calls Azure OpenAI.</li>
+            <li>The model returns JSON → <code>coerce.ts</code> validates &amp; shapes it into typed artifacts.</li>
+            <li>The phase's segment is rebuilt and played by <code>SimulatedRunner</code> — identical animation to Simulation.</li>
+            <li>Store updates → UI renders real, company-specific content, phase by phase.</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <h3>Sub-agent grounding — “IQ” layers</h3>
+          <p class="muted">Each sub-agent carries an illustrative label hinting where its intelligence is sourced.</p>
+          <div class="iq-row">
+            <div class="iq"><span class="tag">Work IQ</span><span><b>Microsoft 365 work data</b> — people, comms, work items, GitHub.</span></div>
+            <div class="iq"><span class="tag">Fabric IQ</span><span><b>Enterprise business data</b> &amp; telemetry in Microsoft Fabric.</span></div>
+            <div class="iq"><span class="tag">Foundry IQ</span><span><b>Model reasoning</b> &amp; knowledge grounding in Azure AI Foundry.</span></div>
+          </div>
+
+          <h3 style="margin-top:18px">Tech stack</h3>
+          <div class="stack">
+            <span class="chip">React 19</span>
+            <span class="chip">TypeScript</span>
+            <span class="chip">Vite</span>
+            <span class="chip">Zustand</span>
+            <span class="chip">Tailwind CSS</span>
+            <span class="chip">shadcn/ui</span>
+            <span class="chip">lucide-react</span>
+            <span class="chip">Azure OpenAI</span>
+            <span class="chip">Entra ID auth</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="foot">
+        Generated architecture overview &middot; open <code>architecture.html</code> in any browser &middot;
+        theme follows your OS, or toggle above.
+      </footer>
+    </div>
+
+    <!-- Detail drawer -->
+    <div class="drawer-backdrop" id="backdrop"></div>
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <button class="close" id="drawerClose" aria-label="Close">✕</button>
+      <div class="d-kind" id="dKind"></div>
+      <h3 id="dTitle"></h3>
+      <div class="d-meta" id="dMeta"></div>
+      <p class="d-body" id="dBody"></p>
+      <ul class="d-list" id="dList"></ul>
+    </aside>
+
+    <script>
+      // ---- Architecture model -------------------------------------------------
+      // mode: "both" | "sim" | "live"  — controls highlight/dimming
+      const BANDS = [
+        {
+          n: "①", title: "Actor", sub: "who drives the demo",
+          nodes: [
+            { id: "user", title: "Stakeholder / Demo driver", kind: "actor", mode: "both",
+              desc: "Selects a company, chooses mode + model, runs the pipeline, approves gates.",
+              details: "The human in the loop. Interacts only with the React UI — choosing a business profile, toggling Simulation vs Live and the model, controlling playback speed, and approving or rejecting human-gate checkpoints.",
+              bullets: ["Business selection & custom-company authoring", "Mode + model + speed controls", "Approves / rejects human gates"] },
+          ],
+        },
+        {
+          n: "②", title: "Presentation — React UI", sub: "src/components/* (Vite)",
+          nodes: [
+            { id: "header", title: "Header", kind: "shell", mode: "both",
+              desc: "Business selector, Mode + Model toggles, theme, run controls.",
+              details: "The top app bar. Hosts BusinessSelector, the Simulation/Live ModeToggle, the GPT-4.1/GPT-5.4 ModelToggle (Live only), the theme switch and RunControls (run / pause / reset / speed).",
+              bullets: ["BusinessSelector", "ModeToggle + ModelToggle", "RunControls + speed", "ThemeToggle"] },
+            { id: "onboarding", title: "Onboarding", kind: "shell", mode: "both",
+              desc: "Landing screen with company cards and phase overview.",
+              details: "Shown before a run starts. Introduces the Magentic orchestrator and previews the five phases and their sub-agent counts.",
+              bullets: ["Company cards", "Phase preview", "Orchestrator intro"] },
+            { id: "rail", title: "PipelineRail", kind: "view", mode: "both",
+              desc: "Overall progress bar and per-phase navigation.",
+              details: "A compact rail summarizing pipeline progress and letting the user jump to any phase lane.",
+              bullets: ["Aggregate progress", "Phase status pills", "Scroll-to-lane nav"] },
+            { id: "lane", title: "PhaseLane ×5", kind: "view", mode: "both",
+              desc: "Ideate → Planner → Developer → Validator → Operator.",
+              details: "The vertical slices. Each lane renders a LaneHeader, a themed ‘Why this matters’ ValueBubble, the SubAgentList (with Work/Fabric/Foundry IQ badges), an ActivityStream, ArtifactCards, and a HumanGateBanner when paused.",
+              bullets: ["LaneHeader + ValueBubble", "SubAgentList (+ IQ badges)", "ActivityStream", "ArtifactCard", "HumanGateBanner"] },
+            { id: "orchestrator", title: "OrchestratorConsole", kind: "view", mode: "both",
+              desc: "Magentic orchestrator narration & coordination.",
+              details: "A console that narrates the orchestrator’s planning and coordination as it drives phases and sub-agents.",
+              bullets: ["Plan narration", "Phase coordination", "Status summary"] },
+            { id: "artifacts", title: "ArtifactDrawer + renderers", kind: "view", mode: "both",
+              desc: "Rich detail views for each generated artifact.",
+              details: "A slide-over drawer with type-specific renderers for every artifact (market brief, scorecard, business case, tech plan, ADR, code, test report, deployment, GTM plan, …).",
+              bullets: ["Per-type renderers", "Discriminated ArtifactType union", "Deep-link selection"] },
+            { id: "primitives", title: "Primitives", kind: "ui", mode: "both",
+              desc: "Charts & indicators: Radar, Donut, Sparkline, ScoreBar…",
+              details: "Reusable visualization primitives used across lanes and artifacts: RadarChart, ScoreDonut, Sparkline, ScoreBar, MetricTile, StatusPill.",
+              bullets: ["RadarChart / ScoreDonut", "Sparkline / ScoreBar", "MetricTile / StatusPill"] },
+            { id: "overlay", title: "LiveGenerationOverlay", kind: "shell", mode: "live",
+              desc: "Error-only modal for Live generation failures.",
+              details: "A lightweight modal surfaced only when a Live generation call fails (e.g. auth or model error), so Simulation is never blocked.",
+              bullets: ["Live error surfacing", "Non-blocking", "Retry guidance"] },
+            { id: "custom", title: "CustomCompanyDialog", kind: "shell", mode: "both",
+              desc: "Author a bespoke company profile at runtime.",
+              details: "A form to define a custom BusinessProfile (industry, size, goals, products) modeled on a built-in template, enabling tailored runs.",
+              bullets: ["Custom BusinessProfile", "Modeled on a template", "Feeds Live context"] },
+          ],
+        },
+        {
+          n: "③", title: "State", sub: "Zustand store + hooks",
+          nodes: [
+            { id: "store", title: "pipelineStore", kind: "zustand", mode: "both",
+              desc: "Single source of truth for phases, agents, artifacts, gates, live state, mode & speed.",
+              details: "The Zustand store. Holds phase/sub-agent/artifact/activity/gate state plus live.{models, selectedModelId} and mode/speed. Exposes actions: start, pause, resume, reset, setMode, setSpeed, setLiveModel, selectBusiness, resolveGate, checkLiveHealth, and the internal _startLive interleave driver.",
+              bullets: ["Phase / agent / artifact state", "live.models + selectedModelId", "Actions: start, _startLive, setLiveModel…", "Drives all UI re-renders"] },
+            { id: "hooks", title: "hooks", kind: "react", mode: "both",
+              desc: "useTheme, use-toast.",
+              details: "Small React hooks: useTheme (light/dark persistence) and use-toast (transient notifications).",
+              bullets: ["useTheme", "use-toast"] },
+          ],
+        },
+        {
+          n: "④", title: "Engines", sub: "deterministic playback + live authoring", twoCol: true,
+          colA: {
+            title: "Simulation engine",
+            nodes: [
+              { id: "buildscript", title: "buildScript / buildSegments", kind: "engine", mode: "both",
+                desc: "Composes RunSegment[] from curated content.",
+                details: "Splits a run into segments (intro, ideate, planner, developer, validator, operator, wrap). buildScript flattens them for Simulation; Live reuses the same segments so playback is byte-identical.",
+                bullets: ["RunSegment[] by phase", "Shared by both modes", "Deterministic order"] },
+              { id: "runner", title: "SimulatedRunner", kind: "engine", mode: "both",
+                desc: "Plays steps → emits store events.",
+                details: "Steps through a script at the chosen speed, emitting typed events. A segmentDone hook lets Live resolve one phase-segment at a time instead of the whole run.",
+                bullets: ["Speed-controlled playback", "Emits phase/agent/artifact events", "segmentDone hook for Live"] },
+              { id: "agentrunner", title: "AgentRunner (types)", kind: "engine", mode: "both",
+                desc: "Event kinds & contracts.",
+                details: "Defines the event union (phase, subagent, artifact, activity, gate) shared between the runner and the store.",
+                bullets: ["Event discriminated union", "Runner ↔ store contract"] },
+              { id: "content", title: "data/content", kind: "data", mode: "sim",
+                desc: "Curated runs: Contoso, Fabrikam, Northwind, custom.",
+                details: "Hand-authored, richly detailed content per business that powers Simulation and seeds the Live baseline before the model overrides it.",
+                bullets: ["contoso / fabrikam / northwind", "custom builder", "businesses registry"] },
+            ],
+          },
+          colB: {
+            title: "Live engine (LLM)",
+            nodes: [
+              { id: "genlive", title: "generateLiveContent", kind: "llm", mode: "live",
+                desc: "buildLiveBase + applyLiveStage(per phase).",
+                details: "Builds an always-valid baseline, then authors each phase on demand. applyLiveStage(stage, base, ctx, {signal, model}) calls the model and merges results into the run content.",
+                bullets: ["buildLiveBase()", "applyLiveStage() per phase", "Forwards selected model id"] },
+              { id: "client", title: "llm/client", kind: "llm", mode: "live",
+                desc: "llmComplete() / llmHealth() → /api/llm.",
+                details: "Thin browser client. llmHealth() probes the proxy for the model registry; llmComplete() POSTs the prompt (and model id) and returns the model’s text.",
+                bullets: ["llmHealth() → models[]", "llmComplete({system,user,model})", "AbortSignal support"] },
+              { id: "prompts", title: "llm/prompts", kind: "llm", mode: "live",
+                desc: "System + per-stage user prompts.",
+                details: "Centralized prompt templates: a grounded system prompt plus stage1–stage4 user prompts that inject the business context.",
+                bullets: ["SYSTEM_PROMPT", "stageN user prompts", "Business-context injection"] },
+              { id: "coerce", title: "llm/coerce", kind: "llm", mode: "live",
+                desc: "Validate & shape model JSON → typed artifacts.",
+                details: "Defensive coercion. Parses the model’s JSON and maps/repairs it into the app’s typed shapes (ideas, scorecards, business case, tech plan, code, …), falling back to the baseline when fields are missing.",
+                bullets: ["parseJsonObject()", "Per-artifact coercers", "Graceful fallbacks"] },
+            ],
+          },
+        },
+        {
+          n: "⑤", title: "Dev proxy", sub: "vite.config.ts middleware (dev only)",
+          nodes: [
+            { id: "proxy", title: "/api/llm  +  /api/llm/health", kind: "proxy", mode: "live",
+              desc: "Multi-model registry; routes requests by model id.",
+              details: "Server-side dev middleware so keys/tokens never reach the browser. Exposes a model registry (LLM_MODELS=fast,deep). resolveModelEnv(env, id) picks a model’s sub-env; callProvider() shapes the Azure OpenAI request (max_tokens vs max_completion_tokens by model family).",
+              bullets: ["Model registry (fast/deep)", "resolveModelEnv → callProvider", "Reasoning vs non-reasoning params", "health returns models[] + default"] },
+            { id: "auth", title: "Entra ID token", kind: "auth", mode: "live",
+              desc: "az account get-access-token, cached per subscription.",
+              details: "When a model uses AAD, the proxy runs `az account get-access-token --resource cognitiveservices` pinned to that model’s subscription/tenant. Tokens are cached in a per-subscription Map so the fast (sandbox) and deep (MSIT) models can authenticate to different tenants simultaneously.",
+              bullets: ["AAD via az CLI", "AZURE_OPENAI_AAD_SUBSCRIPTION pinning", "Per-subscription token cache"] },
+          ],
+        },
+        {
+          n: "⑥", title: "External — Azure OpenAI", sub: "Entra ID · two model profiles", twoCol: true,
+          colA: {
+            title: "fast",
+            nodes: [
+              { id: "fast", title: "gpt-4.1", kind: "azure", mode: "live",
+                desc: "Non-reasoning · ~4–5× faster · sandbox tenant.",
+                details: "Deployment gpt-4.1 on the personal sandbox AIServices account. Non-reasoning → the proxy uses max_tokens + temperature (the fast path). The default model for the demo.",
+                bullets: ["Non-reasoning (fast path)", "Sandbox tenant", "Default model"] },
+            ],
+          },
+          colB: {
+            title: "deep",
+            nodes: [
+              { id: "deep", title: "gpt-5.4", kind: "azure", mode: "live",
+                desc: "Deep reasoning · slower · MSIT tenant.",
+                details: "Deployment gpt-5.4 on the MSIT Efficiency Pack account. Reasoning model → the proxy uses max_completion_tokens + reasoning_effort and omits temperature. Selectable via the UI Model toggle.",
+                bullets: ["Reasoning model", "max_completion_tokens path", "MSIT tenant"] },
+            ],
+          },
+        },
+      ];
+
+      // ---- Render -------------------------------------------------------------
+      const diagram = document.getElementById("diagram");
+
+      function nodeButton(nd) {
+        const b = document.createElement("button");
+        b.className = "node";
+        b.dataset.id = nd.id;
+        b.dataset.mode = nd.mode;
+        b.innerHTML =
+          '<div class="n-top"><span class="n-title"></span><span class="n-kind"></span></div>' +
+          '<p class="n-desc"></p>';
+        b.querySelector(".n-title").textContent = nd.title;
+        b.querySelector(".n-kind").textContent = nd.kind;
+        b.querySelector(".n-desc").textContent = nd.desc;
+        b.addEventListener("click", () => openDrawer(nd));
+        return b;
+      }
+
+      BANDS.forEach((band, i) => {
+        const sec = document.createElement("section");
+        sec.className = "band";
+        const label = document.createElement("div");
+        label.className = "band-label";
+        label.innerHTML =
+          '<span class="band-num"></span><h2></h2>';
+        label.querySelector(".band-num").textContent = band.n;
+        const h2 = label.querySelector("h2");
+        h2.textContent = band.title;
+        const sub = document.createElement("span");
+        sub.className = "sub";
+        sub.textContent = "· " + band.sub;
+        h2.appendChild(sub);
+        sec.appendChild(label);
+
+        if (band.twoCol) {
+          const grid = document.createElement("div");
+          grid.className = "two-col";
+          [band.colA, band.colB].forEach((col) => {
+            const c = document.createElement("div");
+            c.className = "col";
+            const t = document.createElement("p");
+            t.className = "col-title";
+            t.textContent = col.title;
+            c.appendChild(t);
+            col.nodes.forEach((nd) => c.appendChild(nodeButton(nd)));
+            grid.appendChild(c);
+          });
+          sec.appendChild(grid);
+        } else {
+          const grid = document.createElement("div");
+          grid.className = "nodes";
+          band.nodes.forEach((nd) => grid.appendChild(nodeButton(nd)));
+          sec.appendChild(grid);
+        }
+        diagram.appendChild(sec);
+
+        if (i < BANDS.length - 1) {
+          const conn = document.createElement("div");
+          conn.className = "conn";
+          conn.textContent = "▼";
+          diagram.appendChild(conn);
+        }
+      });
+
+      // ---- Mode highlight -----------------------------------------------------
+      const modeSeg = document.getElementById("modeSeg");
+      let currentMode = "both";
+      function applyMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll(".node").forEach((n) => {
+          const m = n.dataset.mode;
+          const relevant = mode === "both" || m === "both" || m === mode;
+          n.classList.toggle("dim", !relevant);
+          n.classList.toggle("flag-sim", mode === "sim" && (m === "sim"));
+          n.classList.toggle("flag-live", mode === "live" && (m === "live"));
+        });
+        document.getElementById("flowSim").classList.toggle("flow-hidden", mode === "live");
+        document.getElementById("flowLive").classList.toggle("flow-hidden", mode === "sim");
+      }
+      modeSeg.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        modeSeg.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        applyMode(btn.dataset.mode);
+      });
+
+      // ---- Drawer -------------------------------------------------------------
+      const drawer = document.getElementById("drawer");
+      const backdrop = document.getElementById("backdrop");
+      function openDrawer(nd) {
+        document.getElementById("dKind").textContent = nd.kind;
+        document.getElementById("dTitle").textContent = nd.title;
+        document.getElementById("dMeta").textContent =
+          nd.mode === "both" ? "Used in Simulation & Live" :
+          nd.mode === "sim" ? "Simulation path" : "Live (LLM) path";
+        document.getElementById("dBody").textContent = nd.details;
+        const list = document.getElementById("dList");
+        list.innerHTML = "";
+        (nd.bullets || []).forEach((b) => {
+          const li = document.createElement("li");
+          li.textContent = b;
+          list.appendChild(li);
+        });
+        drawer.classList.add("open");
+        backdrop.classList.add("open");
+        drawer.setAttribute("aria-hidden", "false");
+      }
+      function closeDrawer() {
+        drawer.classList.remove("open");
+        backdrop.classList.remove("open");
+        drawer.setAttribute("aria-hidden", "true");
+      }
+      document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+      backdrop.addEventListener("click", closeDrawer);
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+      // ---- Theme toggle -------------------------------------------------------
+      document.getElementById("themeBtn").addEventListener("click", () => {
+        const cur = document.documentElement.getAttribute("data-theme");
+        document.documentElement.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
+      });
+    </script>
+  </body>
+</html>

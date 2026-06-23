@@ -1,0 +1,123 @@
+# Azure Static Web Apps deployment.
+#
+# DORMANT until you opt in: it only runs when the repository variable
+# DEPLOY_ENABLED == 'true'. Until then it is a no-op (no red X on every push).
+#
+# Auth uses GitHub OIDC -> Azure (no long-lived cloud credentials). It logs in
+# with a federated identity, reads the Static Web App's short-lived deployment
+# token at run time, and never stores it. Set up with scripts/setup-github.ps1
+# and infra/main.bicep.
+#
+# Required repo secrets:  AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+# Required repo variables: DEPLOY_ENABLED=true, AZURE_SWA_NAME, AZURE_RESOURCE_GROUP
+
+name: Deploy (Azure Static Web Apps)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: build-and-deploy
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      !(github.event_name == 'pull_request' && github.event.action == 'closed') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    # 'push' -> production (optionally gated by its own required reviewer);
+    # PRs -> ephemeral 'preview' environments with their own URL.
+    environment: ${{ github.event_name == 'push' && 'production' || 'preview' }}
+    permissions:
+      id-token: write # OIDC token for azure/login
+      contents: read
+      pull-requests: write # SWA action posts the preview URL on the PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Azure login (OIDC, no stored credentials)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Read SWA deployment token
+        id: swa
+        run: |
+          token=$(az staticwebapp secrets list \
+            --name "${{ vars.AZURE_SWA_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token }}
+          action: upload
+          app_location: dist
+          skip_app_build: true
+          skip_api_build: true
+
+  close-preview:
+    name: close-preview
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Read SWA deployment token
+        id: swa
+        run: |
+          token=$(az staticwebapp secrets list \
+            --name "${{ vars.AZURE_SWA_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Tear down preview environment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token }}
+          action: close

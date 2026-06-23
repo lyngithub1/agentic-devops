@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a problem with Agentic DevOps
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for filing a bug! Please fill in the details below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: When I run the pipeline in Live mode, ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select business "..."
+        2. Press Run pipeline
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Simulation
+        - Live (LLM)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Browser, OS, Node version (`node -v`).
+    validations:
+      required: false

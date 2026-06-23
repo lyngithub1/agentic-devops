@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic DevOps — Idea-to-Market Pipeline Architecture</title>
+<style>
+:root {
+  --azure: #0078D4;
+  --azure-dk: #005A9E;
+  --azure-lt: #DEECF9;
+  --cyan: #50E6FF;
+  --green: #107C10;
+  --green-lt: #E6F4E6;
+  --orange: #FF8C00;
+  --orange-lt: #FFF4E5;
+  --purple: #5C2D91;
+  --purple-lt: #F0E6FA;
+  --gold: #FFB900;
+  --gold-lt: #FFF8E1;
+  --red: #D13438;
+  --red-lt: #FDE7E9;
+  --teal: #008272;
+  --teal-lt: #E0F7F4;
+  --work: #0F6CBD;
+  --fabric: #117865;
+  --foundry: #8661C5;
+  --gray: #505050;
+  --gray-lt: #F2F2F2;
+  --shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #F4F6F8;
+  color: #1A1A1A;
+  overflow-x: auto;
+}
+.page { padding: 28px 36px; min-width: 1580px; }
+
+/* Header */
+.header { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.header-logo { width: 44px; height: 44px; background: var(--azure); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  font-size: 22px; font-weight: 700; }
+.header h1 { font-size: 21px; font-weight: 600; color: var(--azure-dk); }
+.header .sub { font-size: 12px; color: #888; margin-top: 2px; }
+
+/* Banner */
+.banner { margin: 14px 0 12px; border-radius: 10px; padding: 16px 24px;
+  display: flex; align-items: center; gap: 16px; }
+.banner.green { background: var(--green-lt); border: 2px solid var(--green); }
+.banner.purple { background: var(--purple-lt); border: 2px solid var(--purple); }
+.banner-icon { width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 26px; flex-shrink: 0; }
+.banner-icon.green { background: var(--green); }
+.banner-icon.purple { background: var(--purple); }
+.banner-body h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.banner.green .banner-body h2 { color: var(--green); }
+.banner.purple .banner-body h2 { color: var(--purple); }
+.banner-body p { font-size: 12px; color: #555; line-height: 1.5; }
+
+/* Metrics */
+.metrics-row { display: flex; gap: 12px; margin-bottom: 20px; }
+.metric-tile { flex: 1; background: #fff; border-radius: 10px; padding: 14px 16px;
+  box-shadow: var(--shadow); text-align: center; border-top: 4px solid var(--azure); }
+.metric-tile.green { border-top-color: var(--green); }
+.metric-tile.teal { border-top-color: var(--teal); }
+.metric-tile.purple { border-top-color: var(--purple); }
+.metric-tile.orange { border-top-color: var(--orange); }
+.metric-tile.red { border-top-color: var(--red); }
+.metric-tile.gold { border-top-color: var(--gold); }
+.metric-val { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.metric-tile .metric-val { color: var(--azure-dk); }
+.metric-tile.green .metric-val { color: var(--green); }
+.metric-tile.teal .metric-val { color: var(--teal); }
+.metric-tile.purple .metric-val { color: var(--purple); }
+.metric-tile.orange .metric-val { color: var(--orange); }
+.metric-tile.red .metric-val { color: var(--red); }
+.metric-tile.gold .metric-val { color: #8A6500; }
+.metric-label { font-size: 10px; color: #888; margin-top: 3px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .4px; }
+.metric-sub { font-size: 9px; color: #AAA; margin-top: 2px; }
+
+/* Section Header */
+.section-header { display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; margin-top: 28px; }
+.section-header h2 { font-size: 16px; font-weight: 700; color: var(--azure-dk);
+  white-space: nowrap; }
+.section-header .line { flex: 1; height: 1px; background: #D2D2D2; }
+
+/* Cards */
+.card { background: #fff; border-radius: 8px; padding: 12px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 3px solid var(--azure);
+  transition: transform .12s; font-size: 11px; }
+.card:hover { transform: translateX(2px); box-shadow: 0 2px 8px rgba(0,0,0,.14); }
+.card.green { border-left-color: var(--green); }
+.card.orange { border-left-color: var(--orange); }
+.card.purple { border-left-color: var(--purple); }
+.card.gold { border-left-color: var(--gold); }
+.card.teal { border-left-color: var(--teal); }
+.card.red { border-left-color: var(--red); }
+.card.work { border-left-color: var(--work); }
+.card.fabric { border-left-color: var(--fabric); }
+.card.foundry { border-left-color: var(--foundry); }
+.card-row { display: flex; align-items: center; gap: 8px; }
+.card-icon { font-size: 18px; flex-shrink: 0; }
+.card-body { flex: 1; }
+.card-name { font-weight: 700; font-size: 12px; color: #1A1A1A; }
+.card-res { font-size: 10px; color: var(--azure); font-weight: 600; }
+.card-det { font-size: 10px; color: #666; line-height: 1.4; margin-top: 2px; }
+.up-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 9px;
+  font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 4px;
+  letter-spacing: .3px; }
+.up-badge.new { background: var(--teal); color: #fff; }
+.up-badge.gs { background: var(--azure); color: #fff; }
+.up-badge.foundry { background: var(--foundry); color: #fff; }
+.up-badge.fabric { background: var(--fabric); color: #fff; }
+.up-badge.work { background: var(--work); color: #fff; }
+.up-badge.live { background: var(--green); color: #fff; }
+.up-badge.target { background: var(--gray); color: #fff; }
+
+/* Tier Labels */
+.tier-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; padding: 4px 10px; border-radius: 4px; color: #fff;
+  text-align: center; margin-bottom: 8px; }
+.tier-label.client { background: var(--gold); }
+.tier-label.api { background: var(--green); }
+.tier-label.foundry { background: var(--foundry); }
+.tier-label.fabric { background: var(--fabric); }
+.tier-label.work { background: var(--work); }
+.tier-label.data { background: var(--teal); }
+.tier-label.obs { background: var(--orange); }
+.tier-label.security { background: var(--red); }
+
+/* Horizontal Flow */
+.h-flow { display: flex; align-items: stretch; gap: 0; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.arrow-col { display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-width: 58px; gap: 3px; padding-top: 20px; }
+.arrow-line { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.arrow-line .line { width: 24px; height: 0; border-top: 2px solid var(--azure); }
+.arrow-line .head { font-size: 14px; color: var(--azure); line-height: 1; }
+.arrow-label { font-size: 8px; color: #888; text-align: center; line-height: 1.2; max-width: 70px; }
+
+/* Foundry highlight zone */
+.foundry-zone { display: flex; align-items: flex-start; gap: 10px; position: relative;
+  border: 2px dashed var(--foundry); border-radius: 14px; padding: 14px 12px 12px;
+  background: rgba(134,97,197,.05); }
+.foundry-zone-label { position: absolute; top: -10px; left: 16px; background: var(--foundry);
+  color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .5px; padding: 2px 9px;
+  border-radius: 9px; text-transform: uppercase; white-space: nowrap; }
+
+/* Mini safety boxes */
+.mini-col { display: flex; flex-direction: column; gap: 8px; min-width: 132px; }
+.mini-box { background: #fff; border-radius: 8px; padding: 9px 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 3px solid var(--foundry);
+  display: flex; align-items: center; gap: 8px; transition: transform .12s; }
+.mini-box:hover { transform: translateX(2px); box-shadow: 0 2px 8px rgba(0,0,0,.14); }
+.mini-box .mb-icon { font-size: 16px; flex-shrink: 0; }
+.mini-box .mb-name { font-weight: 700; font-size: 11px; color: #1A1A1A; }
+.mini-box .mb-sub { font-size: 9px; color: #777; line-height: 1.3; }
+
+/* WS Flow Chain */
+.ws-section { margin-top: 24px; background: #fff; border-radius: 10px; padding: 20px 24px;
+  box-shadow: var(--shadow); border-top: 4px solid var(--azure); }
+.ws-section.green-top { border-top-color: var(--green); }
+.ws-section.purple-top { border-top-color: var(--purple); }
+.ws-section.teal-top { border-top-color: var(--teal); }
+.ws-section.work-top { border-top-color: var(--work); }
+.ws-section.fabric-top { border-top-color: var(--fabric); }
+.ws-section.foundry-top { border-top-color: var(--foundry); }
+.ws-section h3 { font-size: 14px; font-weight: 700; color: var(--azure-dk);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.ws-section.green-top h3 { color: var(--green); }
+.ws-section.purple-top h3 { color: var(--purple); }
+.ws-section.teal-top h3 { color: var(--teal); }
+.ws-section.work-top h3 { color: var(--work); }
+.ws-section.fabric-top h3 { color: var(--fabric); }
+.ws-section.foundry-top h3 { color: var(--foundry); }
+.ws-chain { display: flex; align-items: center; gap: 0; flex-wrap: nowrap;
+  overflow-x: auto; padding: 8px 0; }
+.ws-node { border-radius: 8px; padding: 12px 16px; font-size: 11px; font-weight: 600;
+  text-align: center; white-space: nowrap; flex-shrink: 0; min-width: 150px;
+  box-shadow: var(--shadow); }
+.ws-node.client { background: var(--gold-lt); border: 2px solid var(--gold); color: #8A6500; }
+.ws-node.front { background: var(--teal-lt); border: 2px solid var(--teal); color: var(--teal); }
+.ws-node.agent { background: var(--green-lt); border: 2px solid var(--green); color: var(--green); }
+.ws-node.orch { background: var(--purple-lt); border: 2px solid var(--purple); color: var(--purple); }
+.ws-node.filter { background: var(--orange-lt); border: 2px solid var(--orange); color: #B86200; }
+.ws-node.openai { background: var(--green-lt); border: 3px solid var(--green); color: var(--green); }
+.ws-node.result { background: var(--green-lt); border: 2px solid var(--green); color: var(--green); }
+.ws-node.azure { background: var(--azure-lt); border: 2px solid var(--azure); color: var(--azure-dk); }
+.ws-node.teal-n { background: var(--teal-lt); border: 2px solid var(--teal); color: var(--teal); }
+.ws-node.red-n { background: var(--red-lt); border: 2px solid var(--red); color: var(--red); }
+.ws-node.purple-n { background: var(--purple-lt); border: 2px solid var(--purple); color: var(--purple); }
+.ws-node.foundry-n { background: #F0E9FA; border: 2px solid var(--foundry); color: var(--foundry); }
+.ws-node-name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+.ws-node-det { font-size: 10px; font-weight: 400; color: #666; }
+.ws-node-count { font-size: 18px; font-weight: 700; margin-top: 4px; }
+.ws-arrow { display: flex; flex-direction: column; align-items: center; padding: 0 4px; flex-shrink: 0; }
+.ws-arrow-line { width: 30px; height: 0; border-top: 2px solid var(--azure); }
+.ws-arrow-head { font-size: 14px; color: var(--azure); line-height: 1; }
+.ws-arrow-label { font-size: 9px; color: #888; white-space: nowrap; margin-top: 2px; }
+.ws-arrow.green-a .ws-arrow-line { border-top-color: var(--green); }
+.ws-arrow.green-a .ws-arrow-head { color: var(--green); }
+.ws-arrow.purple-a .ws-arrow-line { border-top-color: var(--purple); }
+.ws-arrow.purple-a .ws-arrow-head { color: var(--purple); }
+.ws-arrow.teal-a .ws-arrow-line { border-top-color: var(--teal); }
+.ws-arrow.teal-a .ws-arrow-head { color: var(--teal); }
+.ws-arrow.orange-a .ws-arrow-line { border-top-color: var(--orange); }
+.ws-arrow.orange-a .ws-arrow-head { color: var(--orange); }
+
+/* Changes Panel */
+.changes-section { display: flex; gap: 20px; margin-bottom: 24px; }
+.changes-panel { flex: 1; background: #fff; border-radius: 10px; padding: 20px 24px;
+  box-shadow: var(--shadow); }
+.changes-panel.v4 { border-top: 4px solid var(--green); }
+.changes-panel.v4 h3 { color: var(--green); }
+.changes-panel.cost { border-top: 4px solid var(--azure); }
+.changes-panel.cost h3 { color: var(--azure); }
+.changes-panel h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.change-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid #F0F0F0; font-size: 12px; line-height: 1.5; color: #333; }
+.change-item:last-child { border-bottom: none; }
+.change-num { width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.change-num.green { background: var(--green); }
+.change-num.azure { background: var(--azure); }
+.change-num.purple { background: var(--purple); }
+.change-num.teal { background: var(--teal); }
+.change-num.orange { background: var(--orange); }
+
+/* Region Box */
+.region-box { border: 2px solid var(--azure); border-radius: 14px; padding: 22px 16px 16px;
+  background: rgba(0,120,212,.03); position: relative; }
+.region-tag { position: absolute; top: -12px; left: 18px; background: var(--azure); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 3px 14px; border-radius: 4px; letter-spacing: .8px; }
+
+/* Two / Three-col grid */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+
+/* IQ panel */
+.iq-panel { background: #fff; border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow); }
+.iq-panel.work { border-top: 4px solid var(--work); }
+.iq-panel.fabric { border-top: 4px solid var(--fabric); }
+.iq-panel.foundry { border-top: 4px solid var(--foundry); }
+.iq-panel h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.iq-panel.work h3 { color: var(--work); }
+.iq-panel.fabric h3 { color: var(--fabric); }
+.iq-panel.foundry h3 { color: var(--foundry); }
+.iq-count { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; color: #fff; }
+.iq-panel.work .iq-count { background: var(--work); }
+.iq-panel.fabric .iq-count { background: var(--fabric); }
+.iq-panel.foundry .iq-count { background: var(--foundry); }
+.iq-panel p.iq-desc { font-size: 11px; color: #555; line-height: 1.5; margin: 8px 0 12px; }
+.iq-panel .iq-sub { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #999; margin: 10px 0 5px; }
+.iq-chip { display: inline-block; font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 12px;
+  margin: 0 4px 5px 0; background: #F2F2F2; color: #444; }
+.iq-svc { font-size: 11px; color: #444; line-height: 1.6; }
+.iq-svc b { color: #222; }
+
+/* Footer */
+.footer { margin-top: 28px; text-align: center; font-size: 10px; color: #AAA;
+  padding-bottom: 16px; line-height: 1.6; }
+.footer .disclaimer { font-style: italic; max-width: 900px; margin: 0 auto; }
+
+/* Feedback loop arrow */
+.feedback-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 18px 0 8px; }
+.feedback-arrow { font-size: 18px; color: var(--purple); }
+.feedback-label { font-size: 11px; font-weight: 600; color: var(--purple); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== HEADER ===== -->
+  <div class="header">
+    <div class="header-logo">AD</div>
+    <div>
+      <h1>Agentic DevOps — Idea-to-Market Pipeline Architecture</h1>
+      <div class="sub">Multi-Agent Product Pipeline • Azure AI Foundry • Microsoft Fabric • Work IQ • Foundry IQ • Fabric IQ</div>
+    </div>
+  </div>
+
+  <!-- ===== BANNER ===== -->
+  <div class="banner green">
+    <div class="banner-icon green">✓</div>
+    <div class="banner-body">
+      <h2>Governed Multi-Agent Delivery — From Idea to Market</h2>
+      <p>Not a chatbot. A structured path from <strong>Ideate → Planner → Developer → Validator → Operator</strong>, driven by a <strong>Magentic orchestrator</strong> and 24 specialized sub-agents, each grounded in <strong>Work IQ</strong>, <strong>Fabric IQ</strong>, and <strong>Foundry IQ</strong>, with human-in-the-loop gates between every phase.</p>
+    </div>
+  </div>
+
+  <!-- ===== METRICS ===== -->
+  <div class="metrics-row">
+    <div class="metric-tile">
+      <div class="metric-val">5</div>
+      <div class="metric-label">Pipeline Phases</div>
+      <div class="metric-sub">Ideate → Operator</div>
+    </div>
+    <div class="metric-tile green">
+      <div class="metric-val">24</div>
+      <div class="metric-label">Specialized Sub-Agents</div>
+      <div class="metric-sub">6 · 5 · 4 · 4 · 5 across phases</div>
+    </div>
+    <div class="metric-tile purple">
+      <div class="metric-val">1</div>
+      <div class="metric-label">Magentic Orchestrator</div>
+      <div class="metric-sub">Plans &amp; coordinates</div>
+    </div>
+    <div class="metric-tile teal">
+      <div class="metric-val">3</div>
+      <div class="metric-label">IQ Grounding Layers</div>
+      <div class="metric-sub">Work · Fabric · Foundry</div>
+    </div>
+    <div class="metric-tile orange">
+      <div class="metric-val">2</div>
+      <div class="metric-label">Run Modes</div>
+      <div class="metric-sub">Live + Simulation</div>
+    </div>
+    <div class="metric-tile gold">
+      <div class="metric-val">gpt-4.1 · 5.4</div>
+      <div class="metric-label">Foundry Models</div>
+      <div class="metric-sub">Fast + deep reasoning</div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: CORE PIPELINE ===== -->
+  <div class="section-header">
+    <h2>🔄 Core Pipeline — Idea to Market</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="ws-section">
+    <h3>🚀 Idea-to-Market Delivery Loop</h3>
+    <div class="ws-chain">
+
+      <div class="ws-node azure">
+        <div class="ws-node-name">💡 Ideate</div>
+        <div class="ws-node-det">Generate &amp; rank ideas<br>Research → score → rank</div>
+        <div class="ws-node-count" style="color:var(--azure-dk);">6</div>
+      </div>
+
+      <div class="ws-arrow">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">top idea</div>
+      </div>
+
+      <div class="ws-node purple-n">
+        <div class="ws-node-name">📋 Planner</div>
+        <div class="ws-node-det">Business case &amp; user stories<br>Triage → ROI → work items</div>
+        <div class="ws-node-count" style="color:var(--purple);">5</div>
+      </div>
+
+      <div class="ws-arrow purple-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">build-ready stories</div>
+      </div>
+
+      <div class="ws-node teal-n">
+        <div class="ws-node-name">💻 Developer</div>
+        <div class="ws-node-det">Architect, scaffold &amp; code<br>Well-Architected build</div>
+        <div class="ws-node-count" style="color:var(--teal);">4</div>
+      </div>
+
+      <div class="ws-arrow teal-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">working build</div>
+      </div>
+
+      <div class="ws-node agent">
+        <div class="ws-node-name">🧪 Validator</div>
+        <div class="ws-node-det">Test, validate &amp; PR<br>Unit · smoke · security</div>
+        <div class="ws-node-count" style="color:var(--green);">4</div>
+      </div>
+
+      <div class="ws-arrow green-a">
+        <span class="ws-arrow-head">→</span>
+        <div class="ws-arrow-line"></div>
+        <div class="ws-arrow-label">clean PR</div>
+      </div>
+
+      <div class="ws-node filter">
+        <div class="ws-node-name">🚀 Operator</div>
+        <div class="ws-node-det">Deploy, observe &amp; grow<br>Telemetry → GTM</div>
+        <div class="ws-node-count" style="color:#B86200;">5</div>
+      </div>
+
+    </div>
+
+    <div class="feedback-row">
+      <span class="feedback-arrow">↩</span>
+      <span class="feedback-label">Operator telemetry &amp; feedback feed back as new Ideas — continuous improvement loop</span>
+      <span class="feedback-arrow">↩</span>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: PLATFORM ARCHITECTURE ===== -->
+  <div class="section-header">
+    <h2>🏗️ Platform Architecture — Service Topology</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="h-flow">
+
+    <!-- CLIENT TIER -->
+    <div class="col" style="min-width:170px;">
+      <div class="tier-label client">CLIENT</div>
+      <div class="card gold">
+        <div class="card-row">
+          <div class="card-icon">🖥️</div>
+          <div class="card-body">
+            <div class="card-name">React + Vite SPA</div>
+            <div class="card-res">Static Web Apps</div>
+            <div class="card-det">React 19 • TypeScript<br>Zustand • Tailwind<br>Pipeline rail + lanes</div>
+            <div class="up-badge gs">FRONT DOOR + CDN</div>
+          </div>
+        </div>
+      </div>
+      <div class="card gold">
+        <div class="card-row">
+          <div class="card-icon">📡</div>
+          <div class="card-body">
+            <div class="card-name">Live Activity Stream</div>
+            <div class="card-res">Real-time UI</div>
+            <div class="card-det">Phase lanes • sub-agents<br>Artifacts • human gates<br>Generation overlay</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">REST +<br>SignalR</div>
+    </div>
+
+    <!-- API & AI GATEWAY -->
+    <div class="col" style="min-width:185px;">
+      <div class="tier-label api">API &amp; AI GATEWAY</div>
+      <div class="card green">
+        <div class="card-row">
+          <div class="card-icon">⚡</div>
+          <div class="card-body">
+            <div class="card-name">Container Apps</div>
+            <div class="card-res">Orchestration API</div>
+            <div class="card-det">Run broker • state<br>Phase workers<br>Human-gate handling</div>
+            <div class="up-badge gs">CONTAINER APPS</div>
+          </div>
+        </div>
+      </div>
+      <div class="card green">
+        <div class="card-row">
+          <div class="card-icon">🛡️</div>
+          <div class="card-body">
+            <div class="card-name">API Management</div>
+            <div class="card-res">AI Gateway</div>
+            <div class="card-det">Token limits • caching<br>Model load-balancing<br>Content Safety policy</div>
+            <div class="up-badge new">AI GATEWAY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">governed<br>calls</div>
+    </div>
+
+    <!-- MICROSOFT FOUNDRY (highlighted trustworthy-AI zone) -->
+    <div class="foundry-zone">
+      <div class="foundry-zone-label">Azure AI Foundry — Trustworthy AI</div>
+      <div class="col" style="min-width:210px;">
+        <div class="tier-label foundry">MICROSOFT FOUNDRY · FOUNDRY IQ</div>
+        <div class="card foundry">
+          <div class="card-row">
+            <div class="card-icon">🤖</div>
+            <div class="card-body">
+              <div class="card-name">Foundry Agent Service</div>
+              <div class="card-res">Magentic + 24 agents</div>
+              <div class="card-det">Orchestrator plans &amp; routes<br>Sub-agents per phase</div>
+              <div class="up-badge foundry">AGENT SERVICE</div>
+            </div>
+          </div>
+        </div>
+        <div class="card foundry">
+          <div class="card-row">
+            <div class="card-icon">🧠</div>
+            <div class="card-body">
+              <div class="card-name">Model Deployments</div>
+              <div class="card-res">gpt-4.1 · gpt-5.4</div>
+              <div class="card-det">Fast non-reasoning + deep<br>Selectable per run</div>
+              <div class="up-badge gs">GLOBALSTANDARD</div>
+            </div>
+          </div>
+        </div>
+        <div class="card foundry">
+          <div class="card-row">
+            <div class="card-icon">🔮</div>
+            <div class="card-body">
+              <div class="card-name">Foundry IQ + AI Search</div>
+              <div class="card-res">Knowledge grounding</div>
+              <div class="card-det">Vector + hybrid retrieval<br>Content Safety guardrails<br>Evals &amp; tracing</div>
+              <div class="up-badge foundry">FOUNDRY IQ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mini-col">
+        <div class="tier-label foundry">RESPONSIBLE AI</div>
+        <div class="mini-box">
+          <div class="mb-icon">🛡️</div>
+          <div>
+            <div class="mb-name">Guardrails</div>
+            <div class="mb-sub">Content Safety • prompt shields</div>
+          </div>
+        </div>
+        <div class="mini-box">
+          <div class="mb-icon">📊</div>
+          <div>
+            <div class="mb-name">Observability</div>
+            <div class="mb-sub">Tracing • run monitoring</div>
+          </div>
+        </div>
+        <div class="mini-box">
+          <div class="mb-icon">📋</div>
+          <div>
+            <div class="mb-name">Evaluators</div>
+            <div class="mb-sub">Quality &amp; safety evals</div>
+          </div>
+        </div>
+        <div class="mini-box">
+          <div class="mb-icon">🧪</div>
+          <div>
+            <div class="mb-name">Red Teaming</div>
+            <div class="mb-sub">Adversarial testing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">ground on<br>data</div>
+    </div>
+
+    <!-- MICROSOFT FABRIC -->
+    <div class="col" style="min-width:195px;">
+      <div class="tier-label fabric">MICROSOFT FABRIC · FABRIC IQ</div>
+      <div class="card fabric">
+        <div class="card-row">
+          <div class="card-icon">🧩</div>
+          <div class="card-body">
+            <div class="card-name">Fabric Data Agent</div>
+            <div class="card-res">Semantic grounding</div>
+            <div class="card-det">NL2SQL • ontology<br>Business-data answers</div>
+            <div class="up-badge fabric">FABRIC IQ</div>
+          </div>
+        </div>
+      </div>
+      <div class="card fabric">
+        <div class="card-row">
+          <div class="card-icon">🌐</div>
+          <div class="card-body">
+            <div class="card-name">OneLake + Lakehouse</div>
+            <div class="card-res">Business data</div>
+            <div class="card-det">ROI • cost • benchmarks<br>Delta tables • Warehouse</div>
+          </div>
+        </div>
+      </div>
+      <div class="card fabric">
+        <div class="card-row">
+          <div class="card-icon">📈</div>
+          <div class="card-body">
+            <div class="card-name">Real-Time Intel + Power BI</div>
+            <div class="card-res">Telemetry &amp; dashboards</div>
+            <div class="card-det">Eventhouse streams<br>Operator dashboards</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">work<br>data</div>
+    </div>
+
+    <!-- WORK IQ -->
+    <div class="col" style="min-width:165px;">
+      <div class="tier-label work">MICROSOFT 365 · WORK IQ</div>
+      <div class="card work">
+        <div class="card-row">
+          <div class="card-icon">👥</div>
+          <div class="card-body">
+            <div class="card-name">Microsoft Graph</div>
+            <div class="card-res">Work IQ</div>
+            <div class="card-det">People • comms<br>Work items • context</div>
+            <div class="up-badge work">WORK IQ</div>
+          </div>
+        </div>
+      </div>
+      <div class="card work">
+        <div class="card-row">
+          <div class="card-icon">🔀</div>
+          <div class="card-body">
+            <div class="card-name">GitHub</div>
+            <div class="card-res">Validator phase</div>
+            <div class="card-det">Repo • commits<br>Pull requests</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-col">
+      <div class="arrow-line"><div class="line"></div><span class="head">→</span></div>
+      <div class="arrow-label">persist /<br>stream</div>
+    </div>
+
+    <!-- APP DATA + OBS + SECURITY -->
+    <div class="col" style="min-width:185px;">
+      <div class="tier-label data">STATE · OBS · SECURITY</div>
+      <div class="card teal">
+        <div class="card-row">
+          <div class="card-icon">📦</div>
+          <div class="card-body">
+            <div class="card-name">Cosmos DB + Storage</div>
+            <div class="card-res">Run state &amp; artifacts</div>
+            <div class="card-det">Runs • gates<br>Generated code/scaffold</div>
+          </div>
+        </div>
+      </div>
+      <div class="card teal">
+        <div class="card-row">
+          <div class="card-icon">🔔</div>
+          <div class="card-body">
+            <div class="card-name">SignalR + Service Bus</div>
+            <div class="card-res">Realtime &amp; events</div>
+            <div class="card-det">Live UI push<br>Agent events • gates</div>
+          </div>
+        </div>
+      </div>
+      <div class="card orange">
+        <div class="card-row">
+          <div class="card-icon">📊</div>
+          <div class="card-body">
+            <div class="card-name">App Insights + Logs</div>
+            <div class="card-res">Observability</div>
+            <div class="card-det">Traces • correlation IDs<br>Azure Monitor • KQL</div>
+          </div>
+        </div>
+      </div>
+      <div class="card red">
+        <div class="card-row">
+          <div class="card-icon">🔐</div>
+          <div class="card-body">
+            <div class="card-name">Entra ID + Key Vault</div>
+            <div class="card-res">Identity &amp; secrets</div>
+            <div class="card-det">Entra Agent ID per agent<br>Managed identity • no keys</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== SECTION: IQ LAYERS ===== -->
+  <div class="section-header">
+    <h2>🧠 Three IQ Grounding Layers — Where Each Agent Gets Its Intelligence</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="three-col">
+
+    <div class="iq-panel foundry">
+      <h3>🔮 Foundry IQ <span class="iq-count">13 agents</span></h3>
+      <p class="iq-desc">Model reasoning and knowledge grounding in Azure AI Foundry — vector/hybrid retrieval, evaluations, and guardrails.</p>
+      <div class="iq-sub">Powers</div>
+      <span class="iq-chip">Market Research</span><span class="iq-chip">Idea Generation</span><span class="iq-chip">Architecture</span><span class="iq-chip">Coder</span><span class="iq-chip">Unit / Smoke / Security</span><span class="iq-chip">Deployment</span>
+      <div class="iq-sub">Azure services</div>
+      <div class="iq-svc"><b>Foundry models</b> (gpt-4.1 / gpt-5.4) · <b>AI Search</b> · <b>Content Safety</b> · <b>Foundry Evaluations</b></div>
+    </div>
+
+    <div class="iq-panel fabric">
+      <h3>🧩 Fabric IQ <span class="iq-count">5 agents</span></h3>
+      <p class="iq-desc">Enterprise business data, metrics and telemetry in Microsoft Fabric — the financial and operational ground truth.</p>
+      <div class="iq-sub">Powers</div>
+      <span class="iq-chip">Cost–Benefit</span><span class="iq-chip">Risk Analysis</span><span class="iq-chip">Business Case</span><span class="iq-chip">Observability</span><span class="iq-chip">Optimization</span>
+      <div class="iq-sub">Azure services</div>
+      <div class="iq-svc"><b>OneLake</b> · <b>Lakehouse + Warehouse</b> · <b>Fabric Data Agent</b> · <b>Real-Time Intelligence</b> · <b>Power BI</b></div>
+    </div>
+
+    <div class="iq-panel work">
+      <h3>👥 Work IQ <span class="iq-count">6 agents</span></h3>
+      <p class="iq-desc">Microsoft 365 work data — people, communications, work items and GitHub — the human and delivery context.</p>
+      <div class="iq-sub">Powers</div>
+      <span class="iq-chip">Idea Review</span><span class="iq-chip">Triage</span><span class="iq-chip">Story &amp; Docs</span><span class="iq-chip">Source Control</span><span class="iq-chip">Feedback</span><span class="iq-chip">Go-to-Market</span>
+      <div class="iq-sub">Azure services</div>
+      <div class="iq-svc"><b>Microsoft Graph</b> · <b>Microsoft 365</b> · <b>GitHub</b> (repo &amp; pull requests)</div>
+    </div>
+
+  </div>
+
+  <!-- ===== SECTION: DUAL MODEL ===== -->
+  <div class="section-header">
+    <h2>🧠 Dual-Model Strategy — Fast vs. Deep</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- FAST -->
+    <div class="ws-section green-top">
+      <h3>⚡ gpt-4.1 — Fast Path (default)</h3>
+      <div class="ws-chain">
+        <div class="ws-node agent">
+          <div class="ws-node-name">Sub-Agent</div>
+          <div class="ws-node-det">Drafting &amp; high<br>throughput tasks</div>
+        </div>
+        <div class="ws-arrow green-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">AI Gateway</div>
+        </div>
+        <div class="ws-node azure">
+          <div class="ws-node-name">gpt-4.1</div>
+          <div class="ws-node-det">Non-reasoning<br>Low latency</div>
+        </div>
+        <div class="ws-arrow green-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">grounded</div>
+        </div>
+        <div class="ws-node result">
+          <div class="ws-node-name">Draft Artifact</div>
+          <div class="ws-node-det">Fast iteration<br>Most agents</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; font-size:10px; color:#666; line-height:1.5;">
+        <strong>Best for:</strong> Research, idea generation, scaffolding, tests, GTM copy — speed and volume.
+      </div>
+    </div>
+
+    <!-- DEEP -->
+    <div class="ws-section purple-top">
+      <h3>🧠 gpt-5.4 — Deep Reasoning Path</h3>
+      <div class="ws-chain">
+        <div class="ws-node orch">
+          <div class="ws-node-name">Sub-Agent</div>
+          <div class="ws-node-det">Complex reasoning<br>&amp; tradeoffs</div>
+        </div>
+        <div class="ws-arrow purple-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">AI Gateway</div>
+        </div>
+        <div class="ws-node purple-n">
+          <div class="ws-node-name">gpt-5.4</div>
+          <div class="ws-node-det">Reasoning model<br>Multi-step plans</div>
+        </div>
+        <div class="ws-arrow purple-a">
+          <span class="ws-arrow-head">→</span>
+          <div class="ws-arrow-line"></div>
+          <div class="ws-arrow-label">reasoned</div>
+        </div>
+        <div class="ws-node result">
+          <div class="ws-node-name">Deep Artifact</div>
+          <div class="ws-node-det">Business case<br>Architecture • synthesis</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; font-size:10px; color:#666; line-height:1.5;">
+        <strong>Best for:</strong> Business case, competitive strategy, Well-Architected design, ranking &amp; synthesis.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== SECTION: KEY CAPABILITIES ===== -->
+  <div class="section-header">
+    <h2>✓ Key Architecture Capabilities</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="changes-section">
+    <div class="changes-panel v4">
+      <h3 style="color:var(--green);">✓ Pipeline Governance Principles</h3>
+      <div class="change-item">
+        <div class="change-num green">1</div>
+        <div><strong>Human-in-the-loop gates:</strong> Approvals between phases. The orchestrator pauses at each gate until a person confirms.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">2</div>
+        <div><strong>Grounded IQ:</strong> Every agent draws on Work IQ, Fabric IQ, or Foundry IQ — no ungrounded claims.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">3</div>
+        <div><strong>Orchestrated, not autonomous:</strong> The Magentic orchestrator keeps the big picture, plans, and sequences all 24 sub-agents.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">4</div>
+        <div><strong>Best-practice by design:</strong> The Developer phase applies Azure Well-Architected guidance before any code is generated.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">5</div>
+        <div><strong>Closed feedback loop:</strong> Operator telemetry and feedback are emitted as new Signals that seed the next round of Ideas.</div>
+      </div>
+    </div>
+    <div class="changes-panel cost">
+      <h3 style="color:var(--azure);">🔧 Technology Choices</h3>
+      <div class="change-item">
+        <div class="change-num purple">A</div>
+        <div><strong>Azure AI Foundry:</strong> Agent Service hosts the Magentic orchestrator + 24 sub-agents; gpt-4.1 and gpt-5.4 model deployments.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num azure">B</div>
+        <div><strong>API Management (AI Gateway):</strong> Token budgets, semantic cache, content-safety policy, and load-balancing across both models.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num teal">C</div>
+        <div><strong>Microsoft Fabric:</strong> Fabric IQ business data via OneLake/Lakehouse + Data Agent; Real-Time Intelligence and Power BI for Operator.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num azure">D</div>
+        <div><strong>Work IQ (Microsoft Graph):</strong> People, work items and context; GitHub for real repos and pull requests.</div>
+      </div>
+      <div class="change-item">
+        <div class="change-num green">E</div>
+        <div><strong>Managed identity:</strong> Entra ID + per-agent Entra Agent ID; secrets in Key Vault. No model keys ever reach the browser.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: DEPLOYMENT TARGET ===== -->
+  <div class="section-header">
+    <h2>☁️ Azure Deployment Target</h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="region-box">
+    <div class="region-tag">REGION: EAST US 2</div>
+    <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px;">
+      <div class="card foundry" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">🤖</div>
+          <div class="card-body">
+            <div class="card-name">Foundry Agent Service</div>
+            <div class="card-res">Azure AI Foundry</div>
+            <div class="card-det">Magentic orchestrator<br>24 sub-agents</div>
+          </div>
+        </div>
+      </div>
+      <div class="card foundry" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">🧠</div>
+          <div class="card-body">
+            <div class="card-name">Model Deployments</div>
+            <div class="card-res">Foundry (GlobalStandard)</div>
+            <div class="card-det">gpt-4.1 (fast)<br>gpt-5.4 (deep)</div>
+          </div>
+        </div>
+      </div>
+      <div class="card green" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">⚡</div>
+          <div class="card-body">
+            <div class="card-name">Container Apps + APIM</div>
+            <div class="card-res">API + AI Gateway (Target)</div>
+            <div class="card-det">Orchestration API<br>Phase workers</div>
+          </div>
+        </div>
+      </div>
+      <div class="card teal" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">📦</div>
+          <div class="card-body">
+            <div class="card-name">Cosmos DB + Storage</div>
+            <div class="card-res">State &amp; artifacts (Target)</div>
+            <div class="card-det">Runs • gates • code<br>In-memory mock today</div>
+          </div>
+        </div>
+      </div>
+      <div class="card orange" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">📊</div>
+          <div class="card-body">
+            <div class="card-name">App Insights</div>
+            <div class="card-res">Observability (Target)</div>
+            <div class="card-det">Traces • Logs<br>Correlation IDs</div>
+          </div>
+        </div>
+      </div>
+      <div class="card fabric" style="flex:1; min-width: 180px;">
+        <div class="card-row">
+          <div class="card-icon">🔮</div>
+          <div class="card-body">
+            <div class="card-name">Microsoft Fabric</div>
+            <div class="card-res">F2+ Capacity (Target)</div>
+            <div class="card-det">OneLake • Lakehouse<br>Data Agent • Power BI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="footer">
+    <p class="disclaimer">Demo-grade architecture — live model calls run through a dev proxy today, with simulation mode for offline demos. Production deployment targets Azure AI Foundry Agent Service, API Management (AI Gateway), Container Apps, Cosmos DB, Microsoft Fabric F2+, and Entra-based managed identity.</p>
+    <br>
+    Agentic DevOps — Idea-to-Market Pipeline • Azure AI Foundry + Microsoft Fabric + Work IQ
+  </div>
+
+</div>
+</body>
+</html>

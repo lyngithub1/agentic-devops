@@ -3,6 +3,7 @@ import path from "path";
 import { promisify } from "util";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
+import { githubProxy } from "./vite.github-proxy";
 
 const execAsync = promisify(exec);
 
@@ -291,7 +292,7 @@ export default defineConfig(({ mode }) => {
   // the proxy without exposing them to the client bundle.
   const env = loadEnv(mode, process.cwd(), "");
   return {
-    plugins: [react(), llmProxy(env)],
+    plugins: [react(), llmProxy(env), githubProxy(env)],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

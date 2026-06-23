@@ -89,7 +89,7 @@ else
   printf '%s' "$BRANCH_RULESET" | gh api --method POST "repos/$SLUG/rulesets" --input - >/dev/null
 fi
 
-echo "[7/8] Applying push ruleset..."
+echo "[7/8] Applying push ruleset (org-owned repos only; expected to skip on personal repos)..."
 PUSH_RULESET=$(cat <<'JSON'
 {
   "name": "block-secrets-and-large-files",

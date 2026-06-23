@@ -170,6 +170,9 @@ Write-Host "  NOTE: solo accounts can't approve their own PR review, so required
 Write-Host "        human-review ENVIRONMENT approval is the gate of record. Add CodeQL contexts via UI." -ForegroundColor DarkGray
 
 # --- Push ruleset (block secret-like files) ---------------------------------
+# NOTE: GitHub only permits PUSH rulesets on ORG-owned repos. On a personal
+# public repo this 422s, which is expected. Native push protection (enabled in
+# step 3), .gitignore, and the CI gitleaks job already cover secret blocking.
 Write-Host "`n[7/8] Applying push ruleset..." -ForegroundColor Yellow
 $pushRuleset = @"
 {
@@ -183,13 +186,22 @@ $pushRuleset = @"
   ]
 }
 "@
-try {
-  $existingPush = (gh api "repos/$slug/rulesets" --jq '.[] | select(.name=="block-secrets-and-large-files") | .id') 2>$null
-  if ($existingPush) { $pushRuleset | gh api --method PUT "repos/$slug/rulesets/$existingPush" --input - *> $null }
-  else { $pushRuleset | gh api --method POST "repos/$slug/rulesets" --input - *> $null }
-  Write-Host "  Push ruleset applied (allow-list excludes .env*, keys; 5MB file cap)." -ForegroundColor Green
+$existingPush = (gh api "repos/$slug/rulesets" --jq '.[] | select(.name=="block-secrets-and-large-files") | .id') 2>$null
+if ($existingPush) {
+  $pushRuleset | gh api --method PUT "repos/$slug/rulesets/$existingPush" --input - *> $null
+  Write-Host "  Push ruleset applied." -ForegroundColor Green
 }
-catch { Write-Warning "  Push ruleset could not be applied (may need a specific plan). Skipping. $_" }
+else {
+  $pushOut = $pushRuleset | gh api --method POST "repos/$slug/rulesets" --input - 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    if ("$pushOut" -match 'org-owned|public repos cannot') {
+      Write-Host "  Push ruleset skipped: GitHub only allows push rulesets on org-owned repos." -ForegroundColor DarkYellow
+      Write-Host "  (Push protection + .gitignore + CI gitleaks already block committed secrets.)" -ForegroundColor DarkGray
+    }
+    else { Write-Warning "  Push ruleset could not be applied: $pushOut" }
+  }
+  else { Write-Host "  Push ruleset applied." -ForegroundColor Green }
+}
 
 # --- Done -------------------------------------------------------------------
 Write-Host "`n[8/8] Done." -ForegroundColor Green

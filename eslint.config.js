@@ -15,6 +15,8 @@ export default tseslint.config(
       // Tooling configs (run in Node, not part of the app bundle).
       "*.config.js",
       "*.config.ts",
+      // Dev-only GitHub proxy (Node middleware, loaded by vite.config.ts).
+      "vite.github-proxy.ts",
     ],
   },
   js.configs.recommended,

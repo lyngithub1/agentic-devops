@@ -97,11 +97,13 @@ function ModeToggle() {
   const started = usePipelineStore((s) => s.started);
   const live = usePipelineStore((s) => s.live);
   const checkLiveHealth = usePipelineStore((s) => s.checkLiveHealth);
+  const checkGithubHealth = usePipelineStore((s) => s.checkGithubHealth);
 
-  // Probe the LLM proxy once so the toggle can reflect provider availability.
+  // Probe the LLM + GitHub proxies once so the UI can reflect availability.
   useEffect(() => {
     void checkLiveHealth();
-  }, [checkLiveHealth]);
+    void checkGithubHealth();
+  }, [checkLiveHealth, checkGithubHealth]);
 
   const dotClass =
     live.available === true

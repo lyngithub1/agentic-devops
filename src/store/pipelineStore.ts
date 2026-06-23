@@ -4,6 +4,7 @@ import type { RunScript, RunnerApi, SimEvent } from "@/engine/AgentRunner";
 import { SimulatedRunner } from "@/engine/SimulatedRunner";
 import { resolveContent } from "@/data/content";
 import { llmHealth } from "@/engine/llm/client";
+import { githubHealth, openPr, prStatus } from "@/engine/github/client";
 import {
   buildLiveBase,
   applyLiveStage,
@@ -15,7 +16,11 @@ import { uid } from "@/lib/format";
 import type {
   Artifact,
   BusinessProfile,
+  CodeData,
   GateDecision,
+  GithubState,
+  LivePrCheckView,
+  LivePrState,
   LiveState,
   OrchestratorState,
   PhaseId,
@@ -79,6 +84,28 @@ function makeLive(): LiveState {
   };
 }
 
+function makeLivePr(): LivePrState {
+  return {
+    status: "idle",
+    number: null,
+    htmlUrl: null,
+    branch: null,
+    headSha: null,
+    checks: [],
+    error: null,
+  };
+}
+
+function makeGithub(): GithubState {
+  return {
+    available: null,
+    configured: false,
+    repo: "",
+    mode: "none",
+    pr: makeLivePr(),
+  };
+}
+
 function capEnd<T>(arr: T[], cap: number): T[] {
   return arr.length > cap ? arr.slice(arr.length - cap) : arr;
 }
@@ -95,6 +122,10 @@ interface Actions {
   selectArtifact: (id: string | null) => void;
   checkLiveHealth: () => Promise<void>;
   setLiveModel: (id: string) => void;
+  checkGithubHealth: () => Promise<void>;
+  createLivePr: () => Promise<void>;
+  refreshLivePr: () => Promise<void>;
+  resetLivePr: () => void;
   // internal — driven by the runner
   _applyEvent: (event: SimEvent) => void;
   _applyGateResolution: (phase: PhaseId, decision: GateDecision, note?: string) => void;
@@ -117,12 +148,14 @@ function initialState(): PipelineState {
     orchestrator: makeOrchestrator(),
     selectedArtifactId: null,
     live: makeLive(),
+    github: makeGithub(),
   };
 }
 
 export const usePipelineStore = create<PipelineStore>((set, get) => {
   let runner: SimulatedRunner | null = null;
   let liveAbort: AbortController | null = null;
+  let prPoll: ReturnType<typeof setTimeout> | null = null;
   // When live mode plays the run one segment at a time, this resolves the
   // currently-awaited segment instead of completing the whole run. Simulation
   // leaves it null, so the runner finishing the script means the run is done.
@@ -156,9 +189,14 @@ export const usePipelineStore = create<PipelineStore>((set, get) => {
       liveAbort?.abort();
       liveAbort = null;
       segmentDone = null;
+      if (prPoll) {
+        clearTimeout(prPoll);
+        prPoll = null;
+      }
       runner?.dispose();
       runner = null;
       const prevLive = get().live;
+      const prevGithub = get().github;
       set({
         ...initialState(),
         business,
@@ -172,6 +210,14 @@ export const usePipelineStore = create<PipelineStore>((set, get) => {
           model: prevLive.model,
           models: prevLive.models,
           selectedModelId: prevLive.selectedModelId,
+        },
+        // keep GitHub health; reset only the per-run PR state
+        github: {
+          ...makeGithub(),
+          available: prevGithub.available,
+          configured: prevGithub.configured,
+          repo: prevGithub.repo,
+          mode: prevGithub.mode,
         },
       });
     },
@@ -228,9 +274,13 @@ export const usePipelineStore = create<PipelineStore>((set, get) => {
       liveAbort?.abort();
       liveAbort = null;
       segmentDone = null;
+      if (prPoll) {
+        clearTimeout(prPoll);
+        prPoll = null;
+      }
       runner?.dispose();
       runner = null;
-      const { business, mode, speed, live } = get();
+      const { business, mode, speed, live, github } = get();
       set({
         ...initialState(),
         business,
@@ -243,6 +293,13 @@ export const usePipelineStore = create<PipelineStore>((set, get) => {
           model: live.model,
           models: live.models,
           selectedModelId: live.selectedModelId,
+        },
+        github: {
+          ...makeGithub(),
+          available: github.available,
+          configured: github.configured,
+          repo: github.repo,
+          mode: github.mode,
         },
       });
     },
@@ -302,6 +359,164 @@ export const usePipelineStore = create<PipelineStore>((set, get) => {
           },
         };
       });
+    },
+
+    checkGithubHealth: async () => {
+      const h = await githubHealth();
+      set((state) => ({
+        github: {
+          ...state.github,
+          available: h.configured,
+          configured: h.configured,
+          repo: h.repo,
+          mode: h.mode,
+        },
+      }));
+    },
+
+    createLivePr: async () => {
+      const { business, github } = get();
+      if (!business || !github.configured) return;
+      if (github.pr.status === "creating" || github.pr.status === "polling") return;
+
+      // Collect the latest generated code change set produced by the run.
+      let code: CodeData | null = null;
+      const phases = get().phases;
+      for (const id of PHASE_ORDER) {
+        for (const a of phases[id].artifacts) {
+          if (a.type === "code") {
+            code = a.data;
+            break;
+          }
+        }
+        if (code) break;
+      }
+      if (!code || code.files.length === 0) {
+        set((s) => ({
+          github: {
+            ...s.github,
+            pr: {
+              ...makeLivePr(),
+              status: "error",
+              error: "No generated code yet - run the pipeline through the Developer phase first.",
+            },
+          },
+        }));
+        return;
+      }
+
+      const slug = business.id
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const branch = `agentic/${slug}-${Date.now().toString(36)}`;
+      const runDir = `agentic-runs/${slug}/${stamp}`;
+      const files = [
+        {
+          path: `${runDir}/README.md`,
+          content:
+            `# Agentic DevOps run - ${business.name}\n\n${code.summary}\n\n` +
+            `Generated by the Agentic DevOps pipeline. The change set below is sandboxed under ` +
+            `\`${runDir}/\` so it never overwrites real source. This PR is safe to review and close.\n`,
+        },
+        ...code.files.slice(0, 60).map((f) => ({
+          path: `${runDir}/${f.path.replace(/^\/+/, "")}`,
+          content: f.content,
+        })),
+      ];
+
+      set((s) => ({ github: { ...s.github, pr: { ...makeLivePr(), status: "creating" } } }));
+      try {
+        const pr = await openPr({
+          branch,
+          title: `Agentic run: ${business.name} (${slug})`,
+          body:
+            `Automated change set proposed by the **Agentic DevOps** pipeline for **${business.name}**.\n\n` +
+            `${code.summary}\n\n> Files are sandboxed under \`${runDir}/\` so this PR never modifies real source. Safe to close.`,
+          commitMessage: `feat(agentic): proposed change set for ${business.name}`,
+          files,
+        });
+        set((s) => ({
+          github: {
+            ...s.github,
+            pr: {
+              status: "open",
+              number: pr.number,
+              htmlUrl: pr.htmlUrl,
+              branch: pr.branch,
+              headSha: pr.headSha,
+              checks: [],
+              error: null,
+            },
+          },
+        }));
+        void get().refreshLivePr();
+      } catch (e) {
+        set((s) => ({
+          github: {
+            ...s.github,
+            pr: {
+              ...makeLivePr(),
+              status: "error",
+              error: e instanceof Error ? e.message : String(e),
+            },
+          },
+        }));
+      }
+    },
+
+    refreshLivePr: async () => {
+      const n = get().github.pr.number;
+      if (!n) return;
+      try {
+        const st = await prStatus(n);
+        const checks: LivePrCheckView[] = st.checks.map((c) => ({
+          name: c.name,
+          status: c.status,
+          conclusion: c.conclusion,
+        }));
+        const allComplete = checks.length > 0 && checks.every((c) => c.status === "completed");
+        const merged = st.state === "closed" && st.merged;
+        set((s) => ({
+          github: {
+            ...s.github,
+            pr: {
+              ...s.github.pr,
+              status: merged ? "merged" : "polling",
+              checks,
+              htmlUrl: st.htmlUrl ?? s.github.pr.htmlUrl,
+              headSha: st.headSha ?? s.github.pr.headSha,
+              error: null,
+              lastPolledAt: Date.now(),
+            },
+          },
+        }));
+        if (prPoll) {
+          clearTimeout(prPoll);
+          prPoll = null;
+        }
+        if (!merged && !allComplete) {
+          prPoll = setTimeout(() => {
+            void get().refreshLivePr();
+          }, 6000);
+        }
+      } catch (e) {
+        set((s) => ({
+          github: {
+            ...s.github,
+            pr: { ...s.github.pr, error: e instanceof Error ? e.message : String(e) },
+          },
+        }));
+      }
+    },
+
+    resetLivePr: () => {
+      if (prPoll) {
+        clearTimeout(prPoll);
+        prPoll = null;
+      }
+      set((s) => ({ github: { ...s.github, pr: makeLivePr() } }));
     },
 
     // ----- internal reducers ------------------------------------------------

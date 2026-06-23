@@ -422,6 +422,7 @@ export interface PipelineState {
   orchestrator: OrchestratorState;
   selectedArtifactId: string | null;
   live: LiveState;
+  github: GithubState;
 }
 
 // ----------------------------------------------------------------------------
@@ -456,4 +457,51 @@ export interface LiveState {
   error: string | null;
   models: LiveModelInfo[];
   selectedModelId: string | null;
+}
+
+// ----------------------------------------------------------------------------
+// GitHub live mode (Phase 2) - real branches, commits & pull requests
+// ----------------------------------------------------------------------------
+
+export type GithubAuthMode = "pat" | "app" | "none";
+
+export type LivePrStatusKind =
+  | "idle"
+  | "creating"
+  | "open"
+  | "polling"
+  | "merged"
+  | "error";
+
+export interface LivePrCheckView {
+  name: string;
+  status: "queued" | "in_progress" | "completed";
+  conclusion:
+    | "success"
+    | "failure"
+    | "neutral"
+    | "cancelled"
+    | "skipped"
+    | "timed_out"
+    | "action_required"
+    | null;
+}
+
+export interface LivePrState {
+  status: LivePrStatusKind;
+  number: number | null;
+  htmlUrl: string | null;
+  branch: string | null;
+  headSha: string | null;
+  checks: LivePrCheckView[];
+  error: string | null;
+  lastPolledAt?: number;
+}
+
+export interface GithubState {
+  available: boolean | null; // null = not yet probed
+  configured: boolean;
+  repo: string;
+  mode: GithubAuthMode;
+  pr: LivePrState;
 }

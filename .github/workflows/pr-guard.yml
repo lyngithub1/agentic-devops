@@ -44,7 +44,7 @@ jobs:
     steps:
       - name: Assess PR size and risk
         id: assess
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const LARGE_LINES = Number(process.env.LARGE_LINES);
